@@ -1,11 +1,11 @@
 /**
- * One-time migration of VS Code-native state into ~/.pixel-agents/.
+ * One-time migration of VS Code-native state into ~/.pixelmates/.
  *
  * Sources:
  *   - context.globalState (settings) → config.json[vscode]
  *   - context.workspaceState['pixel-agents.agents'] → vscode-state.json.agents
  *   - context.workspaceState['pixel-agents.agentSeats'] → vscode-state.json.seats
- *   - context.workspaceState['pixel-agents.layout'] → ~/.pixel-agents/layout.json
+ *   - context.workspaceState['pixel-agents.layout'] → ~/.pixelmates/layout.json
  *
  * Runs on every extension activate(). Idempotent: if nothing legacy remains,
  * it's a no-op. Verifies file writes before clearing VS Code keys, so a disk
@@ -98,7 +98,7 @@ export function migrateVsCodeState(context: vscode.ExtensionContext, adapter: St
     }
   }
 
-  // ── Layout (workspaceState → ~/.pixel-agents/layout.json) ──
+  // ── Layout (workspaceState → ~/.pixelmates/layout.json) ──
   // Old VS Code versions stored layout in workspaceState. New code reads from a
   // user-level file. Migrate, but never clobber an existing file (it's the
   // source of truth once written). If the file already exists, just clear the
@@ -123,12 +123,12 @@ export function migrateVsCodeState(context: vscode.ExtensionContext, adapter: St
 
   if (pending.length > 0) {
     console.warn(
-      `[Pixel Agents] Migration incomplete -- ${pending.length} legacy VS Code ` +
+      `[pixelmates] Migration incomplete -- ${pending.length} legacy VS Code ` +
         `key(s) still present. Will retry next activate. Keys: ${pending.join(', ')}`,
     );
     void vscode.window.showWarningMessage(
       `Pixel Agents: ${pending.length} legacy setting(s) could not be migrated to ` +
-        `~/.pixel-agents/config.json. Check ~/.pixel-agents/ is writable.`,
+        `~/.pixelmates/config.json. Check ~/.pixelmates/ is writable.`,
     );
   }
 }

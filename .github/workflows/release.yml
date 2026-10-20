@@ -1,0 +1,90 @@
+name: Release
+
+# Publishing to npm happens only from a published GitHub release, through npm trusted
+# publishing (OIDC): no token is stored in this repository.
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish-npm:
+    name: Verify and Publish npm Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify Release Commit Is on Main
+        shell: bash
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release tag must point to a commit on main."
+            exit 1
+          fi
+
+      - name: Verify package.json Version Equals the Tag
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Release tag $TAG does not match package.json version v$version."
+            exit 1
+          fi
+
+      - name: Setup Node for Trusted Publishing
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.x'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # Trusted publishing needs npm >= 11.5.1.
+      - name: Install Trusted-Publishing npm CLI
+        run: npm install --global npm@latest
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Trusted-Publishing Toolchain
+        run: |
+          node -e "const semver = require('semver'); const npm = require('child_process').execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(); if (!semver.satisfies(process.version, '>=22.14.0') || !semver.satisfies(npm, '>=11.5.1')) { throw new Error('Trusted publishing requires Node >=22.14.0 and npm >=11.5.1'); } console.log('Node', process.version, 'npm', npm);"
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Build and Verify npm Artifact
+        id: npm-package
+        shell: bash
+        run: |
+          output_dir="$RUNNER_TEMP/npm-package"
+          npm run verify:npm-package -- --output-dir "$output_dir"
+          echo "metadata=$output_dir/package-metadata.json" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Verified npm Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-package-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/npm-package/
+          if-no-files-found: error
+          retention-days: 7
+
+      # Runs `npm publish --provenance` on the verified tarball, after re-checking
+      # name, repository url, tag and version against package.json.
+      - name: Publish Verified Artifact to npm
+        run: >-
+          node scripts/publish-npm-package.mjs
+          --metadata "${{ steps.npm-package.outputs.metadata }}"
+          --tag "${{ github.event.release.tag_name }}"
+          --ref "${{ github.ref }}"

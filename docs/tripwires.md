@@ -14,7 +14,7 @@ The tool input that matched never leaves the server. The browser receives the ru
 
 ## Your own rules
 
-Create `~/.pixel-agents/tripwires.json`. Rules are read once at server start: restart to reload. A missing file means the default pack; malformed JSON means the default pack and one log line.
+Create `~/.pixelmates/tripwires.json`. Rules are read once at server start: restart to reload. A missing file means the default pack; malformed JSON means the default pack and one log line.
 
 ```json
 {
@@ -57,7 +57,7 @@ Warning: a user regex with catastrophic backtracking stalls the whole server, wh
 | ----------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `cloud-credentials`     | high     | `~/.aws` credentials, config and SSO cache, gcloud, azure, kubeconfig, `aws configure export-credentials`, `aws sts get-session-token`                                                                                                                                                     |
 | `ssh-private-key`       | high     | `~/.ssh/id_*` except `.pub`                                                                                                                                                                                                                                                                |
-| `sensor-tamper`         | high     | `~/.pixel-agents/`, `~/.claude` settings, hooks and credentials, `~/.claude.json`                                                                                                                                                                                                          |
+| `sensor-tamper`         | high     | `~/.pixelmates/`, `~/.claude` settings, hooks and credentials, `~/.claude.json`                                                                                                                                                                                                          |
 | `secret-literal`        | high     | AWS access key ids, GitHub tokens, Slack tokens, PEM private key headers, `sk-ant-` keys, in any input including file contents. Slack and `sk-ant-` need a key body after the prefix (at least 10 and 20 characters), so a doc or regex that only names `xoxb-` or `sk-ant-` does not fire |
 | `pipe-to-shell`         | high     | `curl` or `wget` piped into a shell or interpreter, `bash <(curl ...)`                                                                                                                                                                                                                     |
 | `aws-mutation`          | high     | `aws` create, delete, put, update, `s3 rm/mv`, uploads to S3 and similar write verbs                                                                                                                                                                                                       |

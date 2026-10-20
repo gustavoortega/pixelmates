@@ -52,9 +52,20 @@ async function getPublishedIntegrity(packageId) {
   }
 }
 
+// A package that was never published 404s: that is the first release, not an error.
+async function getPublishedLatest(name) {
+  try {
+    return await npmView([name, 'dist-tags.latest']);
+  } catch (error) {
+    const output = `${error?.stdout ?? ''}\n${error?.stderr ?? ''}`;
+    if (output.includes('E404')) return null;
+    throw error;
+  }
+}
+
 async function npmPublish(tarballPath) {
   await new Promise((resolve, reject) => {
-    const child = spawn(npmCommand(), ['publish', tarballPath], {
+    const child = spawn(npmCommand(), ['publish', tarballPath, '--provenance'], {
       cwd: REPO_ROOT,
       env: process.env,
       stdio: 'inherit',
@@ -71,7 +82,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const manifest = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8'));
   const metadata = JSON.parse(fs.readFileSync(path.resolve(args.metadata), 'utf-8'));
-  const latestVersion = await npmView([manifest.name, 'dist-tags.latest']);
+  const latestVersion = await getPublishedLatest(manifest.name);
   const expectedId = `${manifest.name}@${manifest.version}`;
   const publishedIntegrity = await getPublishedIntegrity(expectedId);
 

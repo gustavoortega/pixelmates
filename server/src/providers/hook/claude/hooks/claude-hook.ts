@@ -6,7 +6,7 @@ import type { ServerTarget } from '../../../../serverConfig.js';
 import { readServerTargets } from '../serverTargets.js';
 import { createScriptDebugLog } from './scriptDebugLog.js';
 
-/** Opt-in PIXEL_AGENTS_DEBUG_LOG file logger (see scriptDebugLog.ts). */
+/** Opt-in PIXELMATES_DEBUG_LOG file logger (see scriptDebugLog.ts). */
 const debug = createScriptDebugLog('HOOKSCRIPT');
 function hookDebug(line: string): void {
   debug.log(line);

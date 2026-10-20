@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import type { ServerTarget } from '../../../../serverConfig.js';
 
 /**
- * CI / e2e diagnostic for the bundled scripts: when PIXEL_AGENTS_DEBUG_LOG is
+ * CI / e2e diagnostic for the bundled scripts: when PIXELMATES_DEBUG_LOG is
  * set, record each script's outcome at every exit point. The delivery chain
  * (spawn the script -> read the registry -> POST to every live server) is
  * otherwise 100% silent: every failure path resolves quietly, so a dropped
@@ -26,7 +26,7 @@ export interface ScriptDebugLog {
 }
 
 export function createScriptDebugLog(tag: string): ScriptDebugLog {
-  let logPath = process.env['PIXEL_AGENTS_DEBUG_LOG'];
+  let logPath = process.env['PIXELMATES_DEBUG_LOG'];
   return {
     log(line) {
       if (!logPath) return;

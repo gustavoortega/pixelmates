@@ -34,7 +34,7 @@ Every test on the standalone fixture also runs the SPA under the server's Conten
 
 ### Pet system (`@area:pets`)
 
-The animated pets feature, which has no hook dependency. Pet sprites load and the `petSpritesLoaded` broadcast arrives with manifest display names; placing a pet from the Pets-tab carousel toggles it on/off and persists across a panel reload via `~/.pixel-agents/layout.json`; clicking a pet shows a heart bubble that auto-dismisses and dismisses again on re-click. Pets render only on the canvas, so live state is read through the `getPets` / `petClick` e2e test hooks. FSM internals, pathfinding, FOLLOW, z-sort, and legacy-layout migration are covered by webview unit tests, not e2e.
+The animated pets feature, which has no hook dependency. Pet sprites load and the `petSpritesLoaded` broadcast arrives with manifest display names; placing a pet from the Pets-tab carousel toggles it on/off and persists across a panel reload via `~/.pixelmates/layout.json`; clicking a pet shows a heart bubble that auto-dismisses and dismisses again on re-click. Pets render only on the canvas, so live state is read through the `getPets` / `petClick` e2e test hooks. FSM internals, pathfinding, FOLLOW, z-sort, and legacy-layout migration are covered by webview unit tests, not e2e.
 
 ### Render loop (`@area:render`)
 
@@ -81,7 +81,7 @@ CI green on this suite is the safety net for behavioral regressions. The checks 
 
 **First-run experience** (before publishing):
 
-- Delete `~/.pixel-agents/` entirely. Launch the extension fresh — default layout loads, first-run tooltip appears, no console errors, hooks auto-install on first agent spawn.
+- Delete `~/.pixelmates/` entirely. Launch the extension fresh — default layout loads, first-run tooltip appears, no console errors, hooks auto-install on first agent spawn.
 
 **Platform sanity** (CI hosts ≠ your machine):
 
@@ -106,7 +106,7 @@ npm run test:report:open                     # serve + open the Allure dashboard
 
 ## Mocking model & rules
 
-E2E tests drive Pixel Agents through a Claude-like **process boundary**, not by poking internals. The mocked `claude` (`e2e/fixtures/mock-claude` → `mock-claude-runner.cjs`) behaves like the real CLI for the parts Pixel Agents observes: it spawns as a process, creates its own append-only JSONL transcripts, and executes the installed hook script under `~/.pixel-agents/hooks` — the same path the real CLI uses. The builder API itself (`claudeScenario(...)`, `.at()`, `.appendJsonl()`, `.emitHook()`, `.holdOpenFor()`) is documented in CONTRIBUTING.md → "Mock claude".
+E2E tests drive Pixel Agents through a Claude-like **process boundary**, not by poking internals. The mocked `claude` (`e2e/fixtures/mock-claude` → `mock-claude-runner.cjs`) behaves like the real CLI for the parts Pixel Agents observes: it spawns as a process, creates its own append-only JSONL transcripts, and executes the installed hook script under `~/.pixelmates/hooks` — the same path the real CLI uses. The builder API itself (`claudeScenario(...)`, `.at()`, `.appendJsonl()`, `.emitHook()`, `.holdOpenFor()`) is documented in CONTRIBUTING.md → "Mock claude".
 
 Rules for a correct test:
 
@@ -235,8 +235,8 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 - `e2e/claude/hooks-on/lifecycle.spec.ts:1450` — hook install and uninstall round-trip via the Settings toggle (Hooks ON / lifecycle)
 - `e2e/claude/hooks-on/lifecycle.spec.ts:1504` — permission bubble auto-clears when a fresh PreToolUse arrives (Hooks ON / lifecycle)
 - `e2e/claude/hooks-on/lifecycle.spec.ts:1578` — settings toggles persist across a webview reload (Hooks ON / lifecycle)
-- `e2e/claude/hooks-on/lifecycle.spec.ts:1626` — layout editor enter paint save persist and exit round-trip (Hooks ON / lifecycle)
-- `e2e/claude/hooks-on/lifecycle.spec.ts:1707` — hook uninstall preserves a pre-existing third-party hook entry (Hooks ON / lifecycle)
+- `e2e/claude/hooks-on/lifecycle.spec.ts:1622` — layout editor enter paint save persist and exit round-trip (Hooks ON / lifecycle)
+- `e2e/claude/hooks-on/lifecycle.spec.ts:1703` — hook uninstall preserves a pre-existing third-party hook entry (Hooks ON / lifecycle)
 - `e2e/claude/hooks-on/statusline.spec.ts:33` — the status line toggle asks before chaining the wrapper, and after Install the Usage panel waits for a reading (Status line wrapper / VS Code)
 
 ### `@area:teams` (7 tests)
@@ -261,10 +261,10 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 ### `@area:standalone` (54 tests)
 
 - `e2e/standalone/hooks.spec.ts:18` — propagates hook-driven lifecycle into the browser UI (Standalone / hooks)
-- `e2e/standalone/hooks.spec.ts:135` — the tokened page shows the Intro and Install writes the hooks (Standalone / hooks consent)
-- `e2e/standalone/hooks.spec.ts:160` — an Intro closed unanswered stays closed when the host restarts with the same token (Standalone / hooks consent)
-- `e2e/standalone/hooks.spec.ts:194` — an untokened spectator page never sees the consent dialog (Standalone / hooks consent)
-- `e2e/standalone/hooks.spec.ts:223` — the hooks checkbox reflects install state and its click is the consent grant (Standalone / hooks consent)
+- `e2e/standalone/hooks.spec.ts:134` — the tokened page shows the Intro and Install writes the hooks (Standalone / hooks consent)
+- `e2e/standalone/hooks.spec.ts:159` — an Intro closed unanswered stays closed when the host restarts with the same token (Standalone / hooks consent)
+- `e2e/standalone/hooks.spec.ts:191` — an untokened page is refused the office and never sees the consent dialog (Standalone / hooks consent)
+- `e2e/standalone/hooks.spec.ts:219` — the hooks checkbox reflects install state and its click is the consent grant (Standalone / hooks consent)
 - `e2e/standalone/inspector.spec.ts:72` — C7.1 opening the inspector on the selected agent shows its branch from its transcript (Standalone / inspector)
 - `e2e/standalone/inspector.spec.ts:130` — C7.4 acknowledging a tripwire from the inspector clears it (Standalone / inspector)
 - `e2e/standalone/inspector.spec.ts:181` — at 1920x1080 the open sheet takes layout width beside the stage, and opening it closes Usage (dpr 1) (Standalone / inspector layout at dpr 1)
@@ -308,12 +308,12 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 - `e2e/standalone/multi-server-hooks.spec.ts:31` — extension and standalone both stay hook-driven without cross-contamination (Standalone / multi-server hooks)
 - `e2e/standalone/statusline.spec.ts:49` — the status line checkbox asks first, Install chains the wrapper, off restores the original (Standalone / status line wrapper)
 - `e2e/standalone/ui.spec.ts:67` — closeAgent despawns the character (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:101` — Debug View renders JSONL diagnostics in standalone (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:135` — adding an external asset directory triggers a live asset reload (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:165` — browser Export Layout downloads the layout file (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:180` — browser Import Layout applies the chosen file (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:215` — ConnectionIndicator shows a drop, and a host restarted with the same token resyncs the page without a reload (Standalone / UI)
-- `e2e/standalone/ui.spec.ts:285` — a host restarted with another token leaves a lasting notice instead of a reconnect loop (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:100` — Debug View renders JSONL diagnostics in standalone (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:133` — adding an external asset directory triggers a live asset reload (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:163` — browser Export Layout downloads the layout file (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:178` — browser Import Layout applies the chosen file (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:213` — ConnectionIndicator shows a drop, and a host restarted with the same token resyncs the page without a reload (Standalone / UI)
+- `e2e/standalone/ui.spec.ts:283` — a host restarted with another token leaves a lasting notice instead of a reconnect loop (Standalone / UI)
 
 ### `@area:areas` (8 tests)
 

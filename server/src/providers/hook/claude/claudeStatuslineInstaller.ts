@@ -1,11 +1,13 @@
 import * as fs from 'fs';
 
+import type { HookInstallOptions } from '../../../../../core/src/provider.js';
 import type { ClaudeSettings } from './claudeHookInstaller.js';
 import { mutateClaudeSettings, readClaudeSettings } from './claudeHookInstaller.js';
 import {
   makeStatuslineCommand,
   makeTeeOnlyStatusLine,
   parseStatuslineCommand,
+  parseUpstreamStatuslineCommand,
   statuslineTeePath,
 } from './commandIdentity.js';
 
@@ -21,7 +23,7 @@ import {
 
 /** Thrown, with the shape found, when statusLine is something we did not author and cannot wrap safely. */
 export const STATUSLINE_UNEXPECTED_SHAPE =
-  'statusLine in ~/.claude/settings.json is not a command Pixel Agents can wrap';
+  'statusLine in ~/.claude/settings.json is not a command pixelmates can wrap';
 
 /** Logged when uninstall finds a statusLine that is no longer ours: it is left exactly as it is. */
 export const STATUSLINE_LEFT_IN_PLACE = 'statusLine was changed by hand; left as is.';
@@ -33,7 +35,7 @@ export const STATUSLINE_UNSUPPORTED_PLATFORM =
 /** Thrown when the wrapper script is not on disk: a chained command pointing at a missing script would blank the
  *  user's status line instead of running it. */
 export const STATUSLINE_TEE_MISSING =
-  'The status line wrapper script is missing from ~/.pixel-agents/hooks';
+  'The status line wrapper script is missing from ~/.pixelmates/hooks';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -43,6 +45,22 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function parseOurs(statusLine: unknown): { original: string | null } | null {
   if (!isPlainObject(statusLine) || typeof statusLine.command !== 'string') return null;
   return parseStatuslineCommand(statusLine.command);
+}
+
+/** The statusLine's command when upstream Pixel Agents' wrapper is in it, else null. */
+function upstreamWrapperOf(statusLine: unknown): { original: string | null } | null {
+  if (!isPlainObject(statusLine) || typeof statusLine.command !== 'string') return null;
+  return parseUpstreamStatuslineCommand(statusLine.command);
+}
+
+/** Whether statusLine.command runs upstream Pixel Agents' wrapper: the consent ask then offers to replace it. An
+ *  unreadable file reads as "no", like isStatuslineInstalled. */
+export function hasUpstreamStatusline(): boolean {
+  try {
+    return upstreamWrapperOf(readClaudeSettings().statusLine) !== null;
+  } catch {
+    return false;
+  }
 }
 
 /** "found …" for the unexpected-shape error: the keys of an object, or what the value is instead. */
@@ -74,9 +92,11 @@ export function isStatuslineInstalled(): boolean {
  * - A plain object with `type: 'command'` and a non-empty command: replace the command only, keeping every other
  *   field verbatim (padding, refreshInterval, keys we do not know).
  * - Already ours: nothing to do. The wrapper never wraps itself.
+ * - Upstream Pixel Agents' wrapper: wrapped like any other command (its text stays inside ours, untouched) unless
+ *   `replaceLegacy`, which unwraps it first so ours wraps the command the user had before it.
  * - Anything else: refuse before any write, naming what was found.
  */
-export async function installStatusline(): Promise<void> {
+export async function installStatusline(options: HookInstallOptions = {}): Promise<void> {
   const teePath = statuslineTeePath();
   let wrote: boolean;
   try {
@@ -88,6 +108,18 @@ export async function installStatusline(): Promise<void> {
         return true;
       }
       if (parseOurs(current) !== null) return false;
+      const upstream = options.replaceLegacy === true ? upstreamWrapperOf(current) : null;
+      if (upstream !== null && isPlainObject(current)) {
+        // Unwrapped: ours wraps what upstream wrapped, or stands alone when upstream wrapped nothing.
+        settings.statusLine = {
+          ...current,
+          command:
+            upstream.original === null || upstream.original.trim() === ''
+              ? makeTeeOnlyStatusLine(teePath).command
+              : makeStatuslineCommand(teePath, upstream.original),
+        };
+        return true;
+      }
       if (
         isPlainObject(current) &&
         current.type === 'command' &&
@@ -109,7 +141,7 @@ export async function installStatusline(): Promise<void> {
     });
   }
   if (wrote) {
-    console.log('[Pixel Agents] Status line wrapper chained in ~/.claude/settings.json');
+    console.log('[pixelmates] Status line wrapper chained in ~/.claude/settings.json');
   }
 }
 
@@ -145,6 +177,6 @@ export async function uninstallStatusline(): Promise<void> {
       { cause: e },
     );
   }
-  if (leftInPlace) console.log(`[Pixel Agents] ${STATUSLINE_LEFT_IN_PLACE}`);
-  if (wrote) console.log('[Pixel Agents] Status line restored in ~/.claude/settings.json');
+  if (leftInPlace) console.log(`[pixelmates] ${STATUSLINE_LEFT_IN_PLACE}`);
+  if (wrote) console.log('[pixelmates] Status line restored in ~/.claude/settings.json');
 }

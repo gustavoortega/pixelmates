@@ -21,11 +21,26 @@ export function toMajorMinor(version: string): string {
   return parts.length >= 2 ? `${parts[0]}.${parts[1]}` : version;
 }
 
-export const CHANGELOG_REPO_URL = 'https://github.com/pixel-agents-hq/pixel-agents';
+export const CHANGELOG_REPO_URL = 'https://github.com/gustavoortega/pixelmates';
 
 export const DISCORD_INVITE_URL = 'https://discord.gg/Yk7jXebv9H';
 
 export const changelogEntries: ChangelogEntry[] = [
+  {
+    version: '1.0',
+    sections: [
+      {
+        title: 'pixelmates',
+        items: [
+          'Needs you: a rail that ranks the sessions waiting on you, with how long each has waited',
+          'A monitor for every session: plates, an inspector and a privacy key (P)',
+          'Hooks and the data folder moved to ~/.pixelmates; your office is copied from Pixel Agents once',
+          'Pixel Agents hooks are replaced only if you tick the box in the consent dialog',
+        ],
+      },
+    ],
+    contributors: [],
+  },
   {
     version: '1.4',
     sections: [

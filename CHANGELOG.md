@@ -1,5 +1,18 @@
 # Changelog
 
+## pixelmates 1.0.0
+
+pixelmates is a fork of [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). It adds:
+
+- **A monitor.** A Needs you rail that ranks the sessions waiting on you, one plate per session, an inspector and a privacy key (P).
+- **Cozy art and a crew that remembers.** Every sprite is drawn by code at 2x density; sessions keep a name, look and XP across restarts, and XP pays for commits, PRs, merges and green tests.
+- **Honest status.** Idle comes from the transcript tail; health marks flag stuck, looping, stalled and dead sessions; tripwires flag risky tool calls.
+- **Usage.** Token use per room and session, and Claude Code's official 5-hour and weekly limits through an opt-in status line wrapper.
+- **A memory plugin** for Claude Code over your past sessions, read-only.
+- **A new name and data folder.** The package, the command and the data folder are `pixelmates` and `~/.pixelmates`. On first start your office is copied once from `~/.pixel-agents`, which is never modified; consent is not copied. Pixel Agents hooks stay untouched unless you tick the box in the consent dialog.
+
+## Upstream history (pixel-agents)
+
 ## v1.4.1
 
 ### Features

@@ -1,4 +1,4 @@
-import type { HookProvider } from '../../core/src/provider.js';
+import type { HookInstallOptions, HookProvider } from '../../core/src/provider.js';
 import { resendAgentActivity } from './agentActivityResend.js';
 import { buildAgentDiagnostics } from './agentDiagnostics.js';
 import type { AgentRuntime } from './agentRuntime.js';
@@ -29,6 +29,7 @@ type WsSend = (message: Record<string, unknown>) => void;
 export type SetHooksEnabledSideEffect = (
   providerId: string,
   enabled: boolean,
+  options?: HookInstallOptions,
 ) => Promise<void> | void;
 
 /**
@@ -62,7 +63,7 @@ export interface ClientMessageContext {
   /** Official limits from the status line wrapper: the latest reading rides the connect handshake. */
   usageLimits?: UsageLimitsStore;
   /**
-   * Whether this client may send messages that reach OUTSIDE `~/.pixel-agents/`
+   * Whether this client may send messages that reach OUTSIDE `~/.pixelmates/`
    * — today only `setHooksEnabled`, which grants machine-wide consent to modify
    * `~/.claude/settings.json`. Decided per-connection by the transport
    * (httpServer's standaloneTokenValid, or the embedded Bearer token); defaults
@@ -226,7 +227,7 @@ export function handleClientMessage(
         // Answer with the truth so the checkbox still shows reality instead of
         // silently appearing to have worked.
         console.warn(
-          '[Pixel Agents] Ignoring setHooksEnabled from an untokened client — installing hooks needs approval from this machine (open the tokened URL the CLI printed).',
+          '[pixelmates] Ignoring setHooksEnabled from an untokened client — installing hooks needs approval from this machine (open the tokened URL the CLI printed).',
         );
         void provider
           .areHooksInstalled()
@@ -247,7 +248,7 @@ export function handleClientMessage(
       // reasoning as setHooksEnabled above.
       if (!ctx.privileged) {
         console.warn(
-          '[Pixel Agents] Ignoring hooksConsentResponse from an untokened client — installing hooks needs approval from this machine (open the tokened URL the CLI printed).',
+          '[pixelmates] Ignoring hooksConsentResponse from an untokened client — installing hooks needs approval from this machine (open the tokened URL the CLI printed).',
         );
         break;
       }
@@ -259,6 +260,8 @@ export function handleClientMessage(
         provider.id,
         msg.choice,
         standaloneConsentEffects(ctx, send, provider),
+        // Exactly true, like the choice itself: anything else leaves the other app's entries alone.
+        { replaceLegacy: msg.replaceLegacy === true },
       );
       break;
     }
@@ -341,9 +344,10 @@ async function applyHooksPreference(
   send: WsSend,
   provider: HookProvider,
   enabled: boolean,
+  options?: HookInstallOptions,
 ): Promise<void> {
   try {
-    await ctx.onSetHooksEnabled?.(provider.id, enabled);
+    await ctx.onSetHooksEnabled?.(provider.id, enabled, options);
     const installed = await provider.areHooksInstalled();
     if (installed === enabled) {
       setHooksEnabled(provider.id, enabled);
@@ -358,7 +362,7 @@ async function applyHooksPreference(
     // not outcome (the installer refuses to touch an unparseable file).
     send({ type: 'hooksStatus', providerId: provider.id, installed });
   } catch (err) {
-    console.error('[Pixel Agents] Applying the hooks preference failed:', err);
+    console.error('[pixelmates] Applying the hooks preference failed:', err);
   }
 }
 
@@ -391,7 +395,7 @@ async function askBeforeInstall(
       await applyHooksPreference(ctx, send, provider, true);
     }
   } catch (err) {
-    console.error('[Pixel Agents] Asking before the install failed:', err);
+    console.error('[pixelmates] Asking before the install failed:', err);
   }
 }
 
@@ -406,7 +410,8 @@ function standaloneConsentEffects(
   provider: HookProvider,
 ): ConsentEffects {
   return {
-    setHooksEnabled: (enabled) => applyHooksPreference(ctx, send, provider, enabled),
+    setHooksEnabled: (enabled, options) =>
+      applyHooksPreference(ctx, send, provider, enabled, options),
     uninstallHooks: async () => {
       // The same side effect the toggle runs, minus the preference write. The
       // catch keeps the never-reject contract true by construction — the host
@@ -414,7 +419,7 @@ function standaloneConsentEffects(
       try {
         await ctx.onSetHooksEnabled?.(provider.id, false);
       } catch (err) {
-        console.error('[Pixel Agents] Hook uninstall failed:', err);
+        console.error('[pixelmates] Hook uninstall failed:', err);
       }
     },
     areHooksInstalled: () => provider.areHooksInstalled(),
@@ -499,7 +504,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     type: 'settingsLoaded',
     soundEnabled: adapter?.getSetting(KEY_SOUND_ENABLED, true) ?? true,
     lastSeenVersion: adapter?.getSetting(KEY_LAST_SEEN_VERSION, '') ?? '',
-    extensionVersion: process.env.PIXEL_AGENTS_VERSION ?? '',
+    extensionVersion: process.env.PIXELMATES_VERSION ?? '',
     watchAllSessions,
     alwaysShowLabels: adapter?.getSetting(KEY_ALWAYS_SHOW_LABELS, false) ?? false,
     ghostHeadlessAgents: adapter?.getSetting(KEY_GHOST_HEADLESS_AGENTS, false) ?? false,
@@ -525,7 +530,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     void provider
       .areHooksInstalled()
       .catch((err: unknown) => {
-        console.error(`[Pixel Agents] hooks status check failed for provider ${provider.id}:`, err);
+        console.error(`[pixelmates] hooks status check failed for provider ${provider.id}:`, err);
         return false;
       })
       .then((installed) => {

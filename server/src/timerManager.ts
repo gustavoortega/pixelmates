@@ -146,7 +146,7 @@ export function startPermissionTimer(
 
     if (hasNonExempt) {
       notePermissionPending(agent);
-      console.log(`[Pixel Agents] Timer: Agent ${agentId} - possible permission wait detected`);
+      console.log(`[pixelmates] Timer: Agent ${agentId} - possible permission wait detected`);
       agents.broadcast({
         type: 'agentToolPermission',
         id: agentId,

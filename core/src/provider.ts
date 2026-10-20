@@ -159,6 +159,12 @@ export interface SessionMetaFacts {
 
 // ── Hook-based Provider (CLIs with hooks APIs) ────────────────
 
+export interface HookInstallOptions {
+  /** Remove the other app's entries (the app this one was forked from) before writing ours. Absent = false: both
+   *  installs then run side by side, their paths differ. Only the consent dialog's checkbox ever sets it. */
+  replaceLegacy?: boolean;
+}
+
 export interface HookProvider {
   readonly kind: 'hook';
   readonly id: string;
@@ -182,7 +188,7 @@ export interface HookProvider {
   } | null;
 
   /** Install hook scripts that POST to our server. */
-  installHooks(serverUrl: string, authToken: string): Promise<void>;
+  installHooks(serverUrl: string, authToken: string, options?: HookInstallOptions): Promise<void>;
   /** Remove installed hook scripts. */
   uninstallHooks(): Promise<void>;
   /** Check if hooks are currently installed. */
@@ -192,6 +198,9 @@ export interface HookProvider {
    *  provider that installs anything must state its terms, and the gate ships these verbatim so no client copy can
    *  drift. */
   consentDisclosure(): { headline: string; disclosure: string };
+  /** The checkbox label for the consent ask when an install of the app this one was forked from is found next to ours,
+   *  else null. Absent = nothing to replace. Read at ask time, so it must be cheap and must never throw. */
+  legacyReplaceLabel?(): string | null;
   /** The hooks preference before the user has said anything. Absent = true. A provider that is off by default is
    *  never asked about at startup: the ask comes only after the user turns it on in Settings. */
   readonly defaultEnabled?: boolean;

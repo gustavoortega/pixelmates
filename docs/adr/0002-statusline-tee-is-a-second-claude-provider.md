@@ -3,7 +3,7 @@
 Claude Code pipes a JSON to the `statusLine.command` in `~/.claude/settings.json` on every refresh, and that JSON
 carries the official 5-hour and weekly limits (`rate_limits.five_hour` and `rate_limits.seven_day`). The token ledger
 can only estimate those windows from transcripts. To read the official numbers, Pixel Agents chains a wrapper,
-`~/.pixel-agents/hooks/statusline-tee.js`, in front of the user's status line command:
+`~/.pixelmates/hooks/statusline-tee.js`, in front of the user's status line command:
 `node "<wrapper>" '<original>'`. The wrapper runs the original untouched and posts the two windows, and nothing else,
 to `POST /api/statusline/claude-statusline`.
 
@@ -30,7 +30,7 @@ written to: the user changed it after the install, and anything written back wou
 
 ## Considered options
 
-- **Save the original statusLine in `~/.pixel-agents/config.json`.** Rejected: `readConfig` drops keys it does not
+- **Save the original statusLine in `~/.pixelmates/config.json`.** Rejected: `readConfig` drops keys it does not
   know and `writeConfig` swallows its errors, so the saved copy could vanish or never land, and a restore from it
   would overwrite whatever the user changed since. The chained command cannot drift from what the file says, and it
   stays readable to the user.
@@ -45,7 +45,7 @@ written to: the user changed it after the install, and anything written back wou
   one-time backup, atomic tmp + rename, re-read verify). The backup rule counts a status line as ours only in the
   shape the installer creates from nothing, so a file holding our hooks and that wrapper takes no backup of itself.
 - The wrapper must keep working without the app: removing the extension restores the status line, but the npm CLI
-  has no uninstall hook, so the script stays in `~/.pixel-agents/hooks` and, with no server answering, just runs the
+  has no uninstall hook, so the script stays in `~/.pixelmates/hooks` and, with no server answering, just runs the
   original.
 - The privacy promise has two halves: the wrapper builds its body from the two windows, and the route refuses (400)
   any body with another key instead of trimming it.

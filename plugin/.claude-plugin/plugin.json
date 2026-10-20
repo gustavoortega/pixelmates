@@ -1,6 +1,6 @@
 {
-  "name": "pixel-agents",
-  "version": "1.4.1",
+  "name": "pixelmates",
+  "version": "1.0.0",
   "description": "Memory for Claude Code: ask what your past sessions on this machine asked, concluded, committed and edited.",
   "author": {
     "name": "gustavoortega"

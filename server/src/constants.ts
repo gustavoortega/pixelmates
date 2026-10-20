@@ -145,7 +145,7 @@ export const GLOBAL_SCAN_ACTIVE_MIN_SIZE = 3_072; // 3KB
 /** Only adopt global JSONL files modified within this window */
 export const GLOBAL_SCAN_ACTIVE_MAX_AGE_MS = 600_000; // 10 minutes
 
-// ── Display Truncation + Pixel Agents Server paths ──────────
+// ── Display Truncation + pixelmates Server paths ──────────
 // Centralized in core/src/constants.ts; re-exported here for back-compat.
 export {
   HOOK_API_PREFIX,
@@ -192,12 +192,23 @@ export const SESSION_END_GRACE_MS = 2000;
 export const MAX_HOOK_BODY_SIZE = 1_048_576; // 1 MiB
 
 // ── Layout/Config Persistence ──────────────────────────────
-export const LAYOUT_FILE_DIR = '.pixel-agents';
+export const LAYOUT_FILE_DIR = '.pixelmates';
 export const LAYOUT_FILE_NAME = 'layout.json';
 export const LAYOUT_FILE_POLL_INTERVAL_MS = 2000;
 export const LAYOUT_REVISION_KEY = 'layoutRevision';
 export const CONFIG_FILE_NAME = 'config.json';
 export const TRIPWIRES_FILE_NAME = 'tripwires.json';
+
+// ── One-time copy from Pixel Agents' data dir ───────────────
+/** Upstream Pixel Agents' data dir. Read once by migrateDataDir, never written. */
+export const LEGACY_DATA_DIR = '.pixel-agents';
+/** Copied by name. Everything else under the legacy dir (token, port, server
+ *  registry, hook scripts, ledger cache, backups) belongs to the other app. */
+export const MIGRATED_FILE_NAMES = ['layout.json', 'roster.json'] as const;
+/** `standalone-state.json`, `vscode-state.json`: the FileStateAdapter namespaces. */
+export const MIGRATED_STATE_FILE_PATTERN = /^[a-z][a-z0-9]*-state\.json$/;
+export const DATA_DIR_MODE = 0o700;
+export const DATA_FILE_MODE = 0o600;
 
 // ── Standalone server token ────────────────────────────────
 /** Under LAYOUT_FILE_DIR: the standalone server's token, kept across restarts so

@@ -72,7 +72,7 @@ export function loadTripwireRules(filePath: string = tripwiresFilePath()): reado
     text = fs.readFileSync(filePath, 'utf-8');
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn('[Pixel Agents] Tripwires: cannot read tripwires.json, using defaults');
+      console.warn('[pixelmates] Tripwires: cannot read tripwires.json, using defaults');
     }
     return DEFAULT_TRIPWIRE_RULES;
   }
@@ -81,11 +81,11 @@ export function loadTripwireRules(filePath: string = tripwiresFilePath()): reado
   try {
     parsed = JSON.parse(text);
   } catch {
-    console.warn('[Pixel Agents] Tripwires: tripwires.json is not valid JSON, using defaults');
+    console.warn('[pixelmates] Tripwires: tripwires.json is not valid JSON, using defaults');
     return DEFAULT_TRIPWIRE_RULES;
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    console.warn('[Pixel Agents] Tripwires: tripwires.json is not an object, using defaults');
+    console.warn('[pixelmates] Tripwires: tripwires.json is not an object, using defaults');
     return DEFAULT_TRIPWIRE_RULES;
   }
   const cfg = parsed as { enabled?: unknown; disable?: unknown; rules?: unknown };
@@ -100,7 +100,7 @@ export function loadTripwireRules(filePath: string = tripwiresFilePath()): reado
     cfg.rules.forEach((raw, index) => {
       const rule = parseRule(raw);
       if (typeof rule === 'string') {
-        console.warn(`[Pixel Agents] Tripwires: rule #${index} skipped (${rule})`);
+        console.warn(`[pixelmates] Tripwires: rule #${index} skipped (${rule})`);
         return;
       }
       const existing = merged.findIndex((r) => r.id === rule.id);

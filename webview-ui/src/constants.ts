@@ -177,7 +177,7 @@ export const LAYOUT_SAVE_DEBOUNCE_MS = 500;
 
 // ── Layout Import/Export (browser-native, standalone) ────────
 /** Suggested filename when exporting the office layout from the standalone browser. */
-export const LAYOUT_EXPORT_FILENAME = 'pixel-agents-layout.json';
+export const LAYOUT_EXPORT_FILENAME = 'pixelmates-layout.json';
 /** MIME type for the exported layout Blob. */
 export const LAYOUT_EXPORT_MIME = 'application/json';
 export const DEFAULT_FLOOR_COLOR: ColorValue = { h: 35, s: 30, b: 15, c: 0 };
@@ -819,7 +819,7 @@ export const MONITOR_SHEET_NARROW_MAX_WIDTH_PX = 1440;
 /** The rail and sheet re-read their clocks this often: their ages are whole minutes. */
 export const MONITOR_CLOCK_TICK_MS = 30_000;
 /** localStorage key of privacy mode (P), a per-browser preference: '1' on, anything else off. */
-export const MONITOR_PRIVACY_STORAGE_KEY = 'pixel-agents.monitor.privacy';
+export const MONITOR_PRIVACY_STORAGE_KEY = 'pixelmates.monitor.privacy';
 /** Context share (%) at which a medal or context ring turns hot. */
 export const MONITOR_RING_HOT_PCT = 85;
 

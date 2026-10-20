@@ -1,6 +1,6 @@
 ---
 name: session-recap
-description: Recall what past Claude Code sessions on this machine did, read from their transcripts by the pixel-agents memory server. Use it for weekly or sprint updates, to check whether something was already looked into, and before editing files another session may be changing.
+description: Recall what past Claude Code sessions on this machine did, read from their transcripts by the pixelmates memory server. Use it for weekly or sprint updates, to check whether something was already looked into, and before editing files another session may be changing.
 ---
 
 # Session recap

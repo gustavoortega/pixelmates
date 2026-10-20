@@ -1,4 +1,4 @@
-<h1 align="center">Pixel Agents, cozy fork</h1>
+<h1 align="center">pixelmates</h1>
 
 <p align="center">
   <img src="docs/images/hero.png" alt="Four agents in the Studio room: one typing with an XP pop, one reading, one under a storm cloud, one napping">
@@ -12,7 +12,7 @@ This is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents
 
 **Art.** Every sprite is drawn by code in `scripts/cozy-art` at 2x density: 12 characters, 41 furniture sprites, floors, walls, rugs, pets. No paid asset pack. `npm run cozy:assets` regenerates them byte for byte.
 
-**A crew that remembers.** Sessions claim a member from `~/.pixel-agents/roster.json` and keep its name, look and XP across restarts. XP pays for real work, read from the session's own transcript: a commit +60 (at most 3 per turn, an amend pays nothing), a PR created +120, a PR merged +200, tests going green after an edit +40 (at most once per turn). Turns, tool calls and sub-agents pay nothing, and a session without a transcript (a hooks-only provider) stays at its level. Level N to N+1 costs `round(100 * N^1.5)`.
+**A crew that remembers.** Sessions claim a member from `~/.pixelmates/roster.json` and keep its name, look and XP across restarts. XP pays for real work, read from the session's own transcript: a commit +60 (at most 3 per turn, an amend pays nothing), a PR created +120, a PR merged +200, tests going green after an edit +40 (at most once per turn). Turns, tool calls and sub-agents pay nothing, and a session without a transcript (a hooks-only provider) stays at its level. Level N to N+1 costs `round(100 * N^1.5)`.
 
 **Idle looks idle.** Status comes from the tail of the transcript, so a session that finished an hour ago does not sit there typing. Waiting agents read a book, nap after 10 minutes, or walk to the lounge for coffee. Sub-agents show up as gray helpers next to their parent.
 
@@ -37,8 +37,8 @@ This is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents
 Requirements: Node.js 20+, [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ```bash
-git clone https://github.com/gustavoortega/pixel-agents.git
-cd pixel-agents
+git clone https://github.com/gustavoortega/pixelmates.git
+cd pixelmates
 npm install
 npm run build
 node dist/cli.js --host 127.0.0.1
@@ -46,18 +46,18 @@ node dist/cli.js --host 127.0.0.1
 
 Open the URL it prints. It carries a `?token=` that gives full control of the office, including installing the Claude Code hooks, so treat it as a password. The first run asks before it touches `~/.claude/settings.json`.
 
-The token is saved in `~/.pixel-agents/server-token` and the port the server picked in `~/.pixel-agents/server-port`, so the URL keeps working after a restart and an open tab reconnects on its own. If that port is taken, the server uses another one for that run and tries the saved one again next time. The saved token is a long-lived password: `node dist/cli.js --new-token` replaces it and every URL with the old one stops working; under `--host 0.0.0.0`, rotate once you have shared the URL. `--token <token>` uses a token for a single run and leaves the saved one alone.
+The token is saved in `~/.pixelmates/server-token` and the port the server picked in `~/.pixelmates/server-port`, so the URL keeps working after a restart and an open tab reconnects on its own. If that port is taken, the server uses another one for that run and tries the saved one again next time. The saved token is a long-lived password: `node dist/cli.js --new-token` replaces it and every URL with the old one stops working; under `--host 0.0.0.0`, rotate once you have shared the URL. `--token <token>` uses a token for a single run and leaves the saved one alone.
 
 Keep the default bind. `--host 0.0.0.0` puts the office and its token-gated socket on your network.
 
-`npx pixel-agents` and the VS Code Marketplace install upstream, not this fork. For VS Code, open the repo and press F5.
+For VS Code, open the repo and press F5. The extension is not published.
 
 ### Layout
 
-A fresh install opens the cozy office (Studio, Lab, Den, a lounge and a cat). If you already have `~/.pixel-agents/layout.json`, it is kept. To switch to the new office, back it up and delete it:
+A fresh install opens the cozy office (Studio, Lab, Den, a lounge and a cat). If you already have `~/.pixelmates/layout.json`, it is kept. To switch to the new office, back it up and delete it:
 
 ```bash
-mv ~/.pixel-agents/layout.json ~/.pixel-agents/layout.json.bak
+mv ~/.pixelmates/layout.json ~/.pixelmates/layout.json.bak
 ```
 
 Click **Layout** to edit rooms, furniture, rugs and Areas.
@@ -77,8 +77,8 @@ How it treats your transcripts:
 Install:
 
 ```bash
-claude plugin marketplace add gustavoortega/pixel-agents
-claude plugin install pixel-agents@pixel-agents-cozy
+claude plugin marketplace add gustavoortega/pixelmates
+claude plugin install pixelmates@pixelmates
 ```
 
 From a clone, for one session: `claude --plugin-dir ./plugin`.
@@ -89,9 +89,9 @@ Plugins cannot ship permission rules, so every call prompts until you allow the 
 {
   "permissions": {
     "allow": [
-      "mcp__plugin_pixel-agents_memory__recent_work",
-      "mcp__plugin_pixel-agents_memory__find_past_work",
-      "mcp__plugin_pixel-agents_memory__active_now"
+      "mcp__plugin_pixelmates_memory__recent_work",
+      "mcp__plugin_pixelmates_memory__find_past_work",
+      "mcp__plugin_pixelmates_memory__active_now"
     ]
   }
 }

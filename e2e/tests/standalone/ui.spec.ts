@@ -66,7 +66,6 @@ function hostAgentIds(messages: RecordedServerMessage[]): number[] {
 test.describe('Standalone / UI', () => {
   test('closeAgent despawns the character @area:standalone', async ({ page, standalone }) => {
     await setSettings(page, {
-      alwaysShowLabels: true,
       hooksEnabled: true,
       watchAllSessions: true,
       debugView: false,
@@ -106,7 +105,6 @@ test.describe('Standalone / UI', () => {
       debugView: true,
       hooksEnabled: true,
       watchAllSessions: true,
-      alwaysShowLabels: true,
     });
 
     const sessionId = 'standalone-debug-view-session';
@@ -174,7 +172,7 @@ test.describe('Standalone / UI', () => {
       modal.locator('button', { hasText: 'Export Layout' }).click(),
     ]);
 
-    expect(download.suggestedFilename()).toBe('pixel-agents-layout.json');
+    expect(download.suggestedFilename()).toBe('pixelmates-layout.json');
   });
 
   test('browser Import Layout applies the chosen file @area:standalone', async ({

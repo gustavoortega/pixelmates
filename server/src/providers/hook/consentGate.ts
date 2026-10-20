@@ -37,13 +37,21 @@ export interface ConsentGateState {
  */
 export function hooksConsentRequest(
   state: ConsentGateState,
-  provider: Pick<HookProvider, 'id' | 'consentDisclosure'>,
+  provider: Pick<HookProvider, 'id' | 'consentDisclosure' | 'legacyReplaceLabel'>,
 ): HooksConsentRequest | null {
   if (state.installed || state.consentAnswered || !state.hooksEnabled || !state.privileged) {
     return null;
   }
   const { headline, disclosure } = provider.consentDisclosure();
-  return { type: 'hooksConsentRequest', providerId: provider.id, headline, disclosure };
+  // Only when the other app's entries are on disk: the dialog then offers the second, default-off checkbox.
+  const replaceLegacyLabel = provider.legacyReplaceLabel?.() ?? null;
+  return {
+    type: 'hooksConsentRequest',
+    providerId: provider.id,
+    headline,
+    disclosure,
+    ...(replaceLegacyLabel === null ? {} : { replaceLegacyLabel }),
+  };
 }
 
 /**

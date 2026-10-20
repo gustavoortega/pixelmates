@@ -7,7 +7,7 @@ Pixel Agents supports loading furniture assets from directories outside the exte
 1. Open the Pixel Agents panel and click **Settings**
 2. Click **Add Asset Directory** and pick a folder
 3. Your custom assets will appear in the furniture palette immediately, merged with the built-ins
-4. The directory path is saved to `~/.pixel-agents/config.json` and reloaded automatically on restart
+4. The directory path is saved to `~/.pixelmates/config.json` and reloaded automatically on restart
 
 To remove a directory, open Settings and click the **X** next to it.
 

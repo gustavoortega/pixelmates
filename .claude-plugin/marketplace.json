@@ -1,12 +1,12 @@
 {
-  "name": "pixel-agents-cozy",
+  "name": "pixelmates",
   "owner": {
     "name": "gustavoortega"
   },
-  "description": "Pixel Agents, cozy fork: a read-only memory of your Claude Code sessions for Claude.",
+  "description": "pixelmates: a read-only memory of your Claude Code sessions for Claude.",
   "plugins": [
     {
-      "name": "pixel-agents",
+      "name": "pixelmates",
       "source": "./plugin",
       "description": "Memory for Claude Code: ask what your past sessions on this machine asked, concluded, committed and edited."
     }

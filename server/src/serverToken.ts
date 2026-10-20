@@ -43,7 +43,7 @@ export function saveToken(dir: string, token: string): void {
   try {
     writeOwnerOnly(dir, SERVER_TOKEN_FILE_NAME, token);
   } catch (e) {
-    console.error(`[Pixel Agents] Failed to write the server token file: ${e}`);
+    console.error(`[pixelmates] Failed to write the server token file: ${e}`);
   }
 }
 
@@ -68,7 +68,7 @@ export function savePort(dir: string, port: number): void {
   try {
     writeOwnerOnly(dir, SERVER_PORT_FILE_NAME, String(port));
   } catch (e) {
-    console.error(`[Pixel Agents] Failed to write the server port file: ${e}`);
+    console.error(`[pixelmates] Failed to write the server port file: ${e}`);
   }
 }
 

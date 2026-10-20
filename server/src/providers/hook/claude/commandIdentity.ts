@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { HOOK_SCRIPTS_DIR } from '../../../constants.js';
-import { STATUSLINE_TEE_SCRIPT_NAME } from './constants.js';
+import { STATUSLINE_TEE_SCRIPT_NAME, UPSTREAM_TEE_PATH_SUFFIX } from './constants.js';
 
 /**
  * Reading which script a ~/.claude/settings.json command runs. Shared by the hook identity (claudeHookInstaller.ts)
@@ -68,8 +68,8 @@ export function splitScriptCommand(
 
 // ── The status line wrapper ─────────────────────────────────
 
-/** `/.pixel-agents/hooks/statusline-tee.js`. Anchored like the hook script's
- *  suffix: the leading separator keeps `/opt/evil.pixel-agents/...` out. */
+/** `/.pixelmates/hooks/statusline-tee.js`. Anchored like the hook script's
+ *  suffix: the leading separator keeps `/opt/evil.pixelmates/...` out. */
 const TEE_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${STATUSLINE_TEE_SCRIPT_NAME}`;
 
 /** One sh word built only from single-quoted runs joined by `'\''`, which is
@@ -77,7 +77,7 @@ const TEE_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${STATUSLINE_TEE_SCRIPT_NAME}`;
  *  tail, a redirect) is a command someone else wrote around ours. */
 const SINGLE_QUOTED_WORD = /^'((?:[^']|'\\'')*)'$/;
 
-/** Where the wrapper is copied: ~/.pixel-agents/hooks/statusline-tee.js. */
+/** Where the wrapper is copied: ~/.pixelmates/hooks/statusline-tee.js. */
 export function statuslineTeePath(): string {
   return path.join(os.homedir(), HOOK_SCRIPTS_DIR, STATUSLINE_TEE_SCRIPT_NAME);
 }
@@ -107,14 +107,26 @@ export function makeTeeOnlyStatusLine(teePath: string): { type: 'command'; comma
  * Whether a statusLine command is our wrapper, and the original it wraps.
  *
  * Identity is the hook rule (the script `node` runs, absolute, its case-folded
- * path ending in `/.pixel-agents/hooks/statusline-tee.js`) plus the argument:
+ * path ending in `/.pixelmates/hooks/statusline-tee.js`) plus the argument:
  * nothing at all (original null), or exactly one single-quoted word. Anything
  * else returns null, "not ours": uninstall then leaves it alone instead of
  * writing back an original it could only guess at.
  */
 export function parseStatuslineCommand(command: string): { original: string | null } | null {
+  return parseWrapperCommand(command, TEE_PATH_SUFFIX);
+}
+
+/** The same rule for upstream Pixel Agents' wrapper (`/.pixel-agents/hooks/statusline-tee.js`): it writes the same
+ *  grammar, so its original can be read back out. It is never ours; install unwraps it only on `replaceLegacy`. */
+export function parseUpstreamStatuslineCommand(
+  command: string,
+): { original: string | null } | null {
+  return parseWrapperCommand(command, UPSTREAM_TEE_PATH_SUFFIX);
+}
+
+function parseWrapperCommand(command: string, suffix: string): { original: string | null } | null {
   const parts = splitScriptCommand(command, true);
-  if (!parts || !parts.script.toLowerCase().endsWith(TEE_PATH_SUFFIX)) return null;
+  if (!parts || !parts.script.toLowerCase().endsWith(suffix)) return null;
   if (parts.rest === '') return { original: null };
   // Glued to the path (`...tee.js'x'`), sh reads one longer word: a different file.
   if (!/^\s/.test(parts.rest)) return null;

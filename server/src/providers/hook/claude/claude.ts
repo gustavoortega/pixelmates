@@ -6,6 +6,7 @@ import * as path from 'path';
 import { normalizeProjectPath } from '../../../../../core/src/normalizeProjectPath.js';
 import type {
   AgentEvent,
+  HookInstallOptions,
   HookProvider,
   LoopEvent,
   ModelTier,
@@ -22,12 +23,17 @@ import {
 import { recordTimestampMs } from '../../../contextUsage.js';
 import {
   areHooksInstalled as installerAreHooksInstalled,
+  hasUpstreamHooks,
   installHooks as installerInstallHooks,
   uninstallHooks as installerUninstallHooks,
 } from './claudeHookInstaller.js';
 import { claudeTeamProvider } from './claudeTeamProvider.js';
 import { createClaudeTranscriptUsage } from './claudeUsage.js';
-import { CONSENT_DISCLOSURE, CONSENT_INSTALL_HEADLINE } from './consentCopy.js';
+import {
+  CONSENT_DISCLOSURE,
+  CONSENT_INSTALL_HEADLINE,
+  LEGACY_REPLACE_LABEL,
+} from './consentCopy.js';
 import {
   CLAUDE_LARGE_CONTEXT_WINDOW,
   CLAUDE_MODEL_TIERS,
@@ -377,8 +383,16 @@ function normalizeSessionEvent(
 
 /** Async so an installer throw (e.g. unparseable settings.json) always reaches
  *  callers as a rejection they can surface, never a sync throw. */
-async function installHooks(_serverUrl: string, _authToken: string): Promise<void> {
-  await installerInstallHooks();
+async function installHooks(
+  _serverUrl: string,
+  _authToken: string,
+  options?: HookInstallOptions,
+): Promise<void> {
+  await installerInstallHooks(options);
+}
+
+function legacyReplaceLabel(): string | null {
+  return hasUpstreamHooks() ? LEGACY_REPLACE_LABEL : null;
 }
 
 async function uninstallHooks(): Promise<void> {
@@ -967,6 +981,7 @@ export const claudeProvider: HookProvider = {
   uninstallHooks,
   areHooksInstalled,
   consentDisclosure,
+  legacyReplaceLabel,
 
   formatToolStatus,
   permissionExemptTools: new Set(['Task', 'Agent', 'AskUserQuestion']),

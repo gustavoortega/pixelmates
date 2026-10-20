@@ -16,7 +16,7 @@ console.log = (): void => undefined;
 console.info = (): void => undefined;
 console.debug = (): void => undefined;
 
-const VERSION = process.env.PIXEL_AGENTS_VERSION ?? '0.0.0';
+const VERSION = process.env.PIXELMATES_VERSION ?? '0.0.0';
 
 function log(line: string): void {
   try {

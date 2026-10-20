@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ServerConfig } from '../src/serverConfig.js';
 
-// Use isolated temp HOME to avoid touching real ~/.pixel-agents/
+// Use isolated temp HOME to avoid touching real ~/.pixelmates/
 let tmpBase: string;
 let serverJsonDir: string;
 let serverJsonPath: string;
@@ -100,7 +100,7 @@ describe('PixelAgentsServer', () => {
 
   beforeEach(() => {
     tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-server-test-'));
-    serverJsonDir = path.join(tmpBase, '.pixel-agents');
+    serverJsonDir = path.join(tmpBase, '.pixelmates');
     serverJsonPath = path.join(serverJsonDir, 'server.json');
     registryDir = path.join(serverJsonDir, 'servers');
     fs.mkdirSync(serverJsonDir, { recursive: true });
@@ -521,7 +521,7 @@ describe('PixelAgentsServer', () => {
     });
   });
 
-  // ── ~/.pixel-agents/server-token and server-port: the standalone URL across restarts ──
+  // ── ~/.pixelmates/server-token and server-port: the standalone URL across restarts ──
 
   function tokenFile(): string {
     return path.join(serverJsonDir, 'server-token');

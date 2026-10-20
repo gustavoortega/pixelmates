@@ -147,7 +147,7 @@ describe('migrateVsCodeState', () => {
     expect(showWarningMessage).not.toHaveBeenCalled();
   });
 
-  it('migrates legacy layout from workspaceState to ~/.pixel-agents/layout.json', () => {
+  it('migrates legacy layout from workspaceState to ~/.pixelmates/layout.json', () => {
     const legacyLayout = {
       version: 1,
       cols: 20,
@@ -180,7 +180,7 @@ describe('migrateVsCodeState', () => {
   });
 
   it('warns + keeps legacy keys if file write fails (simulated via read-only HOME)', () => {
-    // Make ~/.pixel-agents/ unwritable by pointing HOME at a non-writable path.
+    // Make ~/.pixelmates/ unwritable by pointing HOME at a non-writable path.
     // Simulate by replacing with a file (so mkdirSync fails on subpath).
     const blocker = path.join(tempHome, 'blocker');
     fs.writeFileSync(blocker, 'x');

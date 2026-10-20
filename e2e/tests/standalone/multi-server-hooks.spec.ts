@@ -35,7 +35,6 @@ test.describe('Standalone / multi-server hooks', () => {
     const { frame, tmpHome, workspaceDir: extensionWorkspace, mockLogFile } = pixelAgents;
 
     await setSettings(frame, {
-      alwaysShowLabels: true,
       hooksEnabled: true,
       watchAllSessions: false,
       debugView: false,
@@ -44,7 +43,6 @@ test.describe('Standalone / multi-server hooks', () => {
     const standalone = await launchStandalone(page, { homeDir: tmpHome });
     try {
       await setSettings(page, {
-        alwaysShowLabels: true,
         hooksEnabled: true,
         watchAllSessions: false,
         debugView: false,
@@ -52,7 +50,7 @@ test.describe('Standalone / multi-server hooks', () => {
       await standalone.drainMessages();
       await waitForClaudeHookSetup(tmpHome);
 
-      const registryDir = path.join(tmpHome, '.pixel-agents', 'servers');
+      const registryDir = path.join(tmpHome, '.pixelmates', 'servers');
       await expect
         .poll(
           () => {

@@ -1,13 +1,26 @@
 {
-  "name": "pixel-agents",
-  "displayName": "Pixel Agents",
-  "description": "Pixel art office where your Claude Code agents come to life as animated characters",
-  "version": "1.4.1",
-  "publisher": "pablodelucca",
+  "name": "pixelmates",
+  "displayName": "pixelmates",
+  "description": "Your Claude Code sessions as a pixel office that tells you who needs you.",
+  "version": "1.0.0",
+  "publisher": "gustavoortega",
+  "author": {
+    "name": "Gustavo Ortega"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixel-agents-hq/pixel-agents"
+    "url": "git+https://github.com/gustavoortega/pixelmates.git"
   },
+  "homepage": "https://github.com/gustavoortega/pixelmates#readme",
+  "bugs": {
+    "url": "https://github.com/gustavoortega/pixelmates/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "agents",
+    "pixel-art",
+    "monitor"
+  ],
   "workspaces": [
     "server",
     "webview-ui"
@@ -29,7 +42,7 @@
   ],
   "main": "./dist/extension.js",
   "bin": {
-    "pixel-agents": "./dist/cli.js"
+    "pixelmates": "./dist/cli.js"
   },
   "files": [
     "CHANGELOG.md",
@@ -127,6 +140,7 @@
     "test": "npm run test:webview && npm run test:server && npm run test:package-contract",
     "verify:npm-package": "node scripts/verify-npm-package.mjs",
     "e2e": "node scripts/run-e2e.mjs",
+    "e2e:standalone": "playwright test --config e2e/playwright.standalone.config.ts",
     "e2e:debug": "node scripts/run-e2e.mjs --debug",
     "e2e:inventory": "node scripts/generate-e2e-inventory.mjs",
     "e2e:perf": "playwright test --config e2e/perf/playwright.config.ts",

@@ -17,8 +17,8 @@ tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-question-leak-'));
 // The session transcript is the user's own file, outside the data dir the sweeps read.
 const transcriptDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-question-transcript-'));
 const DEBUG_LOG = path.join(tempHome, 'debug.log');
-process.env['PIXEL_AGENTS_DEBUG'] = '1';
-process.env['PIXEL_AGENTS_DEBUG_LOG'] = DEBUG_LOG;
+process.env['PIXELMATES_DEBUG'] = '1';
+process.env['PIXELMATES_DEBUG_LOG'] = DEBUG_LOG;
 
 const { AgentStateStore } = await import('../src/agentStateStore.js');
 const { FileStateAdapter } = await import('../src/fileStateAdapter.js');
@@ -98,7 +98,7 @@ describe('the question text stays in memory', () => {
     store.persist();
     // The sweeps are not vacuous: the state file and the debug log exist and hold the agents.
     expect(
-      fs.readFileSync(path.join(tempHome, '.pixel-agents', 'standalone-state.json'), 'utf8'),
+      fs.readFileSync(path.join(tempHome, '.pixelmates', 'standalone-state.json'), 'utf8'),
     ).toContain('sess-');
     expect(fs.readFileSync(DEBUG_LOG, 'utf8')).toContain('BCAST');
     for (const haystack of [diskText(), output.join('\n')]) {

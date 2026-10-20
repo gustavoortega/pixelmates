@@ -80,5 +80,5 @@ body:
     id: logs
     attributes:
       label: "Logs"
-      description: "If running from source (F5), open **View > Debug Console** and paste any lines containing `[Pixel Agents]`. Otherwise, open **Help > Toggle Developer Tools > Console** and paste relevant output. **Note:** logs may contain file paths with your username -- redact anything sensitive before posting."
+      description: "If running from source (F5), open **View > Debug Console** and paste any lines containing `[pixelmates]`. Otherwise, open **Help > Toggle Developer Tools > Console** and paste relevant output. **Note:** logs may contain file paths with your username -- redact anything sensitive before posting."
       render: shell

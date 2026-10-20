@@ -31,7 +31,7 @@ export type { ServerConfig } from './serverConfig.js';
 type HookEventCallback = (providerId: string, event: Record<string, unknown>) => void;
 
 /**
- * Pixel Agents server: receives hook events, broadcasts state via WebSocket,
+ * pixelmates server: receives hook events, broadcasts state via WebSocket,
  * and optionally serves the SPA in standalone mode.
  *
  * Routes (via Fastify in httpServer.ts):
@@ -40,13 +40,13 @@ type HookEventCallback = (providerId: string, event: Record<string, unknown>) =>
  * - `GET /api/health` -- health check (no auth)
  * - `GET /ws` -- WebSocket for real-time agent state (auth required)
  *
- * Discovery: writes `~/.pixel-agents/server.json` (legacy single-target pointer)
- * and `~/.pixel-agents/servers/<pid>-<port>.json` (multi-server registry entry)
+ * Discovery: writes `~/.pixelmates/server.json` (legacy single-target pointer)
+ * and `~/.pixelmates/servers/<pid>-<port>.json` (multi-server registry entry)
  * with port, PID, auth token, and capability flags.
  * Multi-window / multi-surface: a second instance detects running servers via
  * the registry and reuses one only when it offers the same capability
  * (embedded reuses embedded, standalone reuses standalone) -- an embedded
- * VS Code server and a standalone `npx pixel-agents` server can run at once,
+ * VS Code server and a standalone `npx pixelmates` server can run at once,
  * each owning its own registry entry, both reachable by hook fan-out.
  */
 export class PixelAgentsServer {
@@ -96,7 +96,7 @@ export class PixelAgentsServer {
       this.config = candidate;
       this.ownsServer = false;
       console.log(
-        `[Pixel Agents] Reusing existing ${wantsSpa ? 'standalone' : 'embedded'} server on port ${candidate.port} (PID ${candidate.pid})`,
+        `[pixelmates] Reusing existing ${wantsSpa ? 'standalone' : 'embedded'} server on port ${candidate.port} (PID ${candidate.pid})`,
       );
       return candidate;
     }
@@ -146,7 +146,7 @@ export class PixelAgentsServer {
       if (savedPort === undefined || !isSavedPortUnavailable(err)) throw err;
       fellBack = true;
       handle = await listenOn(0);
-      console.log(`[Pixel Agents] Port ${savedPort} is unavailable, using ${handle.port}`);
+      console.log(`[pixelmates] Port ${savedPort} is unavailable, using ${handle.port}`);
     }
     const { app, port } = handle;
 
@@ -164,8 +164,8 @@ export class PixelAgentsServer {
       protocol: SERVER_REGISTRY_PROTOCOL_VERSION,
       // Diagnostic-only: forward the debug-log path to the hook script via
       // server.json (env vars don't reach the spawned hook reliably).
-      ...(process.env['PIXEL_AGENTS_DEBUG_LOG']
-        ? { debugLog: process.env['PIXEL_AGENTS_DEBUG_LOG'] }
+      ...(process.env['PIXELMATES_DEBUG_LOG']
+        ? { debugLog: process.env['PIXELMATES_DEBUG_LOG'] }
         : {}),
     };
     this.ownsServer = true;
@@ -173,7 +173,7 @@ export class PixelAgentsServer {
     // entry (new hook scripts fan out to every entry here).
     this.writeServerJson(this.config);
     this.writeRegistryEntry(this.config);
-    console.log(`[Pixel Agents] Server: listening on 127.0.0.1:${port}`);
+    console.log(`[pixelmates] Server: listening on 127.0.0.1:${port}`);
 
     return this.config;
   }
@@ -203,7 +203,7 @@ export class PixelAgentsServer {
     return this.ownsServer;
   }
 
-  /** Returns the absolute path to ~/.pixel-agents/server.json. */
+  /** Returns the absolute path to ~/.pixelmates/server.json. */
   private getServerJsonPath(): string {
     return path.join(os.homedir(), SERVER_JSON_DIR, SERVER_JSON_NAME);
   }
@@ -213,7 +213,7 @@ export class PixelAgentsServer {
     try {
       writePrivateJson(this.getServerJsonPath(), config);
     } catch (e) {
-      console.error(`[Pixel Agents] Failed to write server.json: ${e}`);
+      console.error(`[pixelmates] Failed to write server.json: ${e}`);
     }
   }
 
@@ -243,7 +243,7 @@ export class PixelAgentsServer {
     }
   }
 
-  /** Returns the absolute path to ~/.pixel-agents/servers/. */
+  /** Returns the absolute path to ~/.pixelmates/servers/. */
   private getRegistryDir(): string {
     return path.join(os.homedir(), SERVER_JSON_DIR, SERVERS_DIR);
   }
@@ -301,7 +301,7 @@ export class PixelAgentsServer {
     try {
       writePrivateJson(this.getRegistryFilePath(config), config);
     } catch (e) {
-      console.error(`[Pixel Agents] Failed to write registry entry: ${e}`);
+      console.error(`[pixelmates] Failed to write registry entry: ${e}`);
     }
   }
 

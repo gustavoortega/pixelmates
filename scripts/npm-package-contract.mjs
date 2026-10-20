@@ -3,15 +3,26 @@ import fs from 'node:fs';
 
 import semver from 'semver';
 
-export const EXPECTED_PACKAGE_NAME = 'pixel-agents';
-export const EXPECTED_REPOSITORY_URL = 'https://github.com/pixel-agents-hq/pixel-agents';
+export const EXPECTED_PACKAGE_NAME = 'pixelmates';
+export const EXPECTED_REPOSITORY_URL = 'git+https://github.com/gustavoortega/pixelmates.git';
 
 // fastify + @fastify/{cors,static,websocket} are root runtime `dependencies` even though
 // no root source file imports them: esbuild marks them `external` when bundling
-// dist/cli.js (see esbuild.js), so the published `pixel-agents` bin resolves them from
+// dist/cli.js (see esbuild.js), so the published `pixelmates` bin resolves them from
 // node_modules at runtime. server/ ships its own copy for local dev but is excluded from
 // the tarball (FORBIDDEN_PACKAGE_PREFIXES below), so dropping the root declarations would
 // publish a CLI that crashes on require(). knip.json ignores them for this reason.
+
+/** The tarball stays small: it is fetched on every `npx`. Today it is about 1.1 MB. */
+export const MAX_PACKED_BYTES = 2 * 1024 * 1024;
+
+export function validatePackedSize(size) {
+  if (typeof size !== 'number' || size > MAX_PACKED_BYTES) {
+    throw new Error(
+      `Packed size ${String(size)} bytes exceeds the ${MAX_PACKED_BYTES} byte ceiling`,
+    );
+  }
+}
 
 export const REQUIRED_PACKAGE_FILES = [
   'CHANGELOG.md',
@@ -104,6 +115,7 @@ export function validatePackageFiles(files) {
     if (forbiddenPrefix) problems.push(`forbidden package path: ${file}`);
     if (file.endsWith('.map')) problems.push(`source map must not ship: ${file}`);
     if (file.endsWith('.tgz')) problems.push(`nested tarball must not ship: ${file}`);
+    if (file.endsWith('.gif')) problems.push(`gif must not ship: ${file}`);
   }
 
   if (problems.length > 0) {
@@ -140,10 +152,15 @@ export function validateReleaseIdentity({
   if (ref !== expectedRef) {
     throw new Error(`Release ref ${ref} does not match ${expectedRef}`);
   }
-  if (!semver.valid(latestVersion)) {
+  // null: the package has never been published, so there is no latest to beat.
+  if (latestVersion !== null && !semver.valid(latestVersion)) {
     throw new Error(`Invalid npm latest version: ${String(latestVersion)}`);
   }
-  if (!exactVersionExists && !semver.gt(manifest.version, latestVersion)) {
+  if (
+    latestVersion !== null &&
+    !exactVersionExists &&
+    !semver.gt(manifest.version, latestVersion)
+  ) {
     throw new Error(
       `Package version ${manifest.version} must be greater than npm latest ${latestVersion}`,
     );

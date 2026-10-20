@@ -501,6 +501,7 @@ export interface HooksConsentRequest {
   providerId: string;
   headline: string;
   disclosure: string;
+  replaceLegacyLabel?: string;
 }
 
 export interface ExternalAssetDirectoriesUpdated {
@@ -660,6 +661,7 @@ export interface HooksConsentResponse {
   type: 'hooksConsentResponse';
   providerId: string;
   choice: HooksConsentChoice;
+  replaceLegacy?: boolean;
 }
 
 export type HooksConsentChoice = 'install' | 'notNow' | 'never';

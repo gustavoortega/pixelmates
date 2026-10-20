@@ -13,7 +13,7 @@ import { createScriptDebugLog } from './scriptDebugLog.js';
  * statusline-tee.js: chained in front of the user's Claude Code status line as
  * `node "<this file>" '<original command>'`. Claude Code pipes the status line
  * JSON to it on every refresh; it hands those bytes to the original command
- * and, on the side, tells the local Pixel Agents servers the official 5-hour
+ * and, on the side, tells the local pixelmates servers the official 5-hour
  * and weekly limits that JSON carries.
  *
  * The user's status line comes first, always:
@@ -25,7 +25,7 @@ import { createScriptDebugLog } from './scriptDebugLog.js';
  * - Every POST is destroyed STATUSLINE_POST_BUDGET_MS after it was created and
  *   every failure is silent: a dead or slow server costs at most that budget,
  *   and only when the original finished sooner.
- * - Nothing is printed. The only log is the opt-in PIXEL_AGENTS_DEBUG_LOG file.
+ * - Nothing is printed. The only log is the opt-in PIXELMATES_DEBUG_LOG file.
  *
  * Privacy: the body is built from scratch out of rate_limits.five_hour and
  * rate_limits.seven_day, never copied from the input, so nothing else in the

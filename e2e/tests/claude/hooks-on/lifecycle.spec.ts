@@ -1374,7 +1374,7 @@ test.describe('Hooks ON / lifecycle', () => {
   // setSettings UI toggle → file on disk.
   //
   // Pixel-agents hook entries are recognised by the command string containing
-  // BOTH 'claude-hook.js' and the '.pixel-agents' directory (or legacy
+  // BOTH 'claude-hook.js' and the '.pixelmates' directory (or legacy
   // 'pixel-agents-hook.js'); see
   // server/src/providers/hook/claude/claudeHookInstaller.ts::isOurHookCommand.
   // These test helpers match on the script names alone, which is fine here:
@@ -1567,12 +1567,12 @@ test.describe('Hooks ON / lifecycle', () => {
   //
   // The webview's settings UI is hydrated from `settingsLoaded` on every
   // `webviewReady`. The extension reads from its persisted state (workspace
-  // and global state plus ~/.pixel-agents/config.json) and resends. A
+  // and global state plus ~/.pixelmates/config.json) and resends. A
   // regression in any of {FileStateAdapter.setSetting, configPersistence,
   // PixelAgentsViewProvider's webviewReady handler} would surface as "I
   // turned X off, restarted, X is back on."
   //
-  // Trigger: toggle Always Show Labels off, close+reopen the panel (forces a
+  // Trigger: toggle Display Headless as Ghosts, close+reopen the panel (forces a
   // fresh webviewReady), open the Settings modal, read the indicator state.
   // It must still be unchecked.
   test('settings toggles persist across a webview reload @area:cross-cutting', async ({
@@ -1584,16 +1584,13 @@ test.describe('Hooks ON / lifecycle', () => {
     // Read whatever the fixture default is, then flip it. The persistence
     // assertion is about the FLIPPED state surviving a reload, not about the
     // initial default value.
-    const initial = await getSettingChecked(frame, 'Always Show Labels');
     const initialGhost = await getSettingChecked(frame, 'Display Headless as Ghosts');
-    narrator.step('flipping "Always Show Labels" + "Display Headless as Ghosts" in Settings');
+    narrator.step('flipping "Display Headless as Ghosts" in Settings');
     await setSettings(frame, {
-      alwaysShowLabels: !initial,
       ghostHeadlessAgents: !initialGhost,
     });
-    expect(await getSettingChecked(frame, 'Always Show Labels')).toBe(!initial);
     expect(await getSettingChecked(frame, 'Display Headless as Ghosts')).toBe(!initialGhost);
-    narrator.check('both toggles are now flipped');
+    narrator.check('the toggle is now flipped');
 
     // Force a fresh webview by closing and reopening the panel (same
     // mechanism the restored-agents test uses for the existingAgents restore path).
@@ -1604,14 +1601,13 @@ test.describe('Hooks ON / lifecycle', () => {
 
     // After settingsLoaded re-hydrates, the toggle must still be in the
     // flipped state — not back to the fixture default.
-    expect(await getSettingChecked(frame, 'Always Show Labels')).toBe(!initial);
     expect(await getSettingChecked(frame, 'Display Headless as Ghosts')).toBe(!initialGhost);
     narrator.check('flipped state survives the reload — persisted through config.json');
   });
 
   // layout editor smoke. Verifies entering edit mode reveals the editor
   // toolbar, that a save round-trips through layoutPersistence.ts to
-  // ~/.pixel-agents/layout.json, and that exiting edit mode hides the toolbar.
+  // ~/.pixelmates/layout.json, and that exiting edit mode hides the toolbar.
   //
   // Strategy: click Layout button to enter edit mode -> assert a known
   // editor-only button is visible -> click on the canvas to dirty the layout
@@ -1628,7 +1624,7 @@ test.describe('Hooks ON / lifecycle', () => {
   }) => {
     const { frame, tmpHome, narrator } = pixelAgents;
 
-    const layoutPath = path.join(tmpHome, '.pixel-agents', 'layout.json');
+    const layoutPath = path.join(tmpHome, '.pixelmates', 'layout.json');
 
     // Initial layout — there should be one written at fixture startup since
     // the webview boots with a default layout. Record its content for the
@@ -1692,7 +1688,7 @@ test.describe('Hooks ON / lifecycle', () => {
         { timeout: 10_000 },
       )
       .toBe(true);
-    narrator.check('~/.pixel-agents/layout.json changed on disk after Save');
+    narrator.check('~/.pixelmates/layout.json changed on disk after Save');
 
     // Exit edit mode and confirm the editor button disappears.
     narrator.step('exiting Layout mode');

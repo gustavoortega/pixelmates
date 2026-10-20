@@ -45,7 +45,7 @@ import { releaseHookSubRow } from './hookSubRows.js';
 import type { SubagentWatch } from './subagentWatch.js';
 import type { AgentState } from './types.js';
 
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
+const debug = process.env.PIXELMATES_DEBUG !== '0';
 
 const SUBAGENTS_DIR = 'subagents';
 const WORKFLOWS_DIR = 'workflows';
@@ -263,7 +263,7 @@ export function scanWorkflowRuns(
     reconcile(leadId, lead, ctx, now);
   } catch (e) {
     // The scan runs on the shared project timer: nothing here may throw out of it.
-    console.log(`[Pixel Agents] Workflow scan for Agent ${leadId} failed: ${e}`);
+    console.log(`[pixelmates] Workflow scan for Agent ${leadId} failed: ${e}`);
   } finally {
     reconciling = false;
   }
@@ -622,8 +622,7 @@ function endWorkflowAgent(
   ctx.watch.removeBySpawn(leadId, id);
   ctx.store.broadcast({ type: 'subagentClear', id: leadId, parentToolId: id });
   lead.workflow?.watched.delete(id);
-  if (debug)
-    console.log(`[Pixel Agents] Workflow agent ${id} of Agent ${leadId} ended (${reason})`);
+  if (debug) console.log(`[pixelmates] Workflow agent ${id} of Agent ${leadId} ended (${reason})`);
 }
 
 function endRunAgents(

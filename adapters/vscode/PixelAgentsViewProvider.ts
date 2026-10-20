@@ -271,7 +271,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
     }
     if (this.pendingBroadcasts.length >= MAX_PENDING_BROADCASTS) {
       console.warn(
-        `[Pixel Agents] Webview buffer overflow (${MAX_PENDING_BROADCASTS}). webviewReady never arrived — dropping oldest message.`,
+        `[pixelmates] Webview buffer overflow (${MAX_PENDING_BROADCASTS}). webviewReady never arrived — dropping oldest message.`,
       );
       this.pendingBroadcasts.shift();
     }
@@ -302,10 +302,10 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         if (hooksEnabled) {
           void this.installHooksIfConsented(config.port, config.token);
         }
-        console.log(`[Pixel Agents] Server: ready on port ${config.port}`);
+        console.log(`[pixelmates] Server: ready on port ${config.port}`);
       })
       .catch((e) => {
-        console.error(`[Pixel Agents] Failed to start server: ${e}`);
+        console.error(`[pixelmates] Failed to start server: ${e}`);
       });
   }
 
@@ -390,7 +390,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
       // follows only the Claude provider until the scanners grow per-provider
       // awareness alongside the Settings UI.
       if (provider.id === claudeProvider.id) this.runtime.hooksEnabled.current = enabled;
-      console.log(`[Pixel Agents] Hooks ${enabled ? 'enabled' : 'disabled'} by user`);
+      console.log(`[pixelmates] Hooks ${enabled ? 'enabled' : 'disabled'} by user`);
     }
     // Report the truth either way: on failure the entries are still on disk and
     // still firing, and a checkbox stuck "off" over live hooks offers no retry.
@@ -566,7 +566,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         }
       } else if (message.type === 'saveAgentSeats') {
         // Store seat assignments in a separate key (never touched by persistAgents)
-        console.log(`[Pixel Agents] State: saveAgentSeats:`, JSON.stringify(message.seats));
+        console.log(`[pixelmates] State: saveAgentSeats:`, JSON.stringify(message.seats));
         this.adapter.saveSeats(seatsToPersist(message.seats, this.store));
       } else if (message.type === 'saveLayout') {
         this.layoutWatcher?.markOwnWrite();
@@ -737,7 +737,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           // blocking the other providers' statuses.
           const installed = await provider.areHooksInstalled().catch((err: unknown) => {
             console.error(
-              `[Pixel Agents] hooks status check failed for provider ${provider.id}:`,
+              `[pixelmates] hooks status check failed for provider ${provider.id}:`,
               err,
             );
             return false;
@@ -804,7 +804,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           this.store.size === 0
         ) {
           this.autoSpawnAttempted = true;
-          console.log('[Pixel Agents] Auto-spawning agent on startup');
+          console.log('[pixelmates] Auto-spawning agent on startup');
           // When the user also opted into autoShowPanel, skip terminal.show()
           // so the panel view stays on Pixel Agents. The terminal still runs;
           // clicking the character focuses it via the focusAgent handler.
@@ -852,7 +852,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         // Ensure project scan runs even with no restored agents (to adopt external terminals)
         const projectDir = getProjectDirPath();
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        console.log(`[Pixel Agents] Debug: Platform: ${process.platform}, arch: ${process.arch}`);
+        console.log(`[pixelmates] Debug: Platform: ${process.platform}, arch: ${process.arch}`);
         console.log('[Extension] workspaceRoot:', workspaceRoot);
         console.log('[Extension] projectDir:', projectDir);
         this.runtime.startProjectScan(projectDir);
@@ -866,7 +866,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           for (const folder of wsFolders) {
             const folderProjectDir = getProjectDirPath(folder.uri.fsPath);
             if (folderProjectDir && folderProjectDir !== projectDir) {
-              console.log(`[Pixel Agents] Registering additional project dir: ${folderProjectDir}`);
+              console.log(`[pixelmates] Registering additional project dir: ${folderProjectDir}`);
               this.runtime.startProjectScan(folderProjectDir);
             }
           }
@@ -1169,7 +1169,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
   private startLayoutWatcher(): void {
     if (this.layoutWatcher) return;
     this.layoutWatcher = watchLayoutFile((layout) => {
-      console.log('[Pixel Agents] External layout change — pushing to webview');
+      console.log('[pixelmates] External layout change — pushing to webview');
       this.webview?.postMessage({ type: 'layoutLoaded', layout });
     });
   }

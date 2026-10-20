@@ -24,7 +24,7 @@ function settingsPath(): string {
 }
 
 function teePath(): string {
-  return path.join(tmpBase, '.pixel-agents', 'hooks', 'statusline-tee.js');
+  return path.join(tmpBase, '.pixelmates', 'hooks', 'statusline-tee.js');
 }
 
 function writeSettings(settings: Record<string, unknown>): void {
@@ -35,8 +35,8 @@ function readSettings(): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(settingsPath(), 'utf-8')) as Record<string, unknown>;
 }
 
-/** The status line Tavo actually runs: a script, refreshed every 30 s. */
-const TAVO_STATUS_LINE = {
+/** A typical user status line: a script, refreshed every 30 s. */
+const USER_STATUS_LINE = {
   type: 'command',
   command: '/Users/someone/.claude/statusline-command.sh',
   refreshInterval: 30,
@@ -58,7 +58,7 @@ describe('claudeStatuslineInstaller', () => {
 
   // C3: only the command changes, every other field survives, and the uninstall puts back the exact object.
   it('chains a status line with extra fields and restores it exactly', async () => {
-    writeSettings({ model: 'opus', statusLine: TAVO_STATUS_LINE });
+    writeSettings({ model: 'opus', statusLine: USER_STATUS_LINE });
 
     await installStatusline();
 
@@ -71,7 +71,7 @@ describe('claudeStatuslineInstaller', () => {
 
     await uninstallStatusline();
 
-    expect(readSettings()).toEqual({ model: 'opus', statusLine: TAVO_STATUS_LINE });
+    expect(readSettings()).toEqual({ model: 'opus', statusLine: USER_STATUS_LINE });
   });
 
   it('writes the wrapper alone when there was no status line, and removes the key again', async () => {
@@ -86,7 +86,7 @@ describe('claudeStatuslineInstaller', () => {
 
   // C3: the restore source is the chained command. Once the user changed it, what we would write back is a guess.
   it('leaves a status line changed by hand after the install exactly as it is', async () => {
-    writeSettings({ statusLine: TAVO_STATUS_LINE });
+    writeSettings({ statusLine: USER_STATUS_LINE });
     await installStatusline();
     const handEdited = {
       ...readSettings(),
@@ -99,12 +99,12 @@ describe('claudeStatuslineInstaller', () => {
     await uninstallStatusline();
 
     expect(fs.readFileSync(settingsPath(), 'utf-8')).toBe(before);
-    expect(log).toHaveBeenCalledWith('[Pixel Agents] statusLine was changed by hand; left as is.');
+    expect(log).toHaveBeenCalledWith('[pixelmates] statusLine was changed by hand; left as is.');
     expect(isStatuslineInstalled()).toBe(false);
   });
 
   it('never wraps its own wrapper: a second install changes nothing', async () => {
-    writeSettings({ statusLine: TAVO_STATUS_LINE });
+    writeSettings({ statusLine: USER_STATUS_LINE });
     await installStatusline();
     const once = fs.readFileSync(settingsPath(), 'utf-8');
 
@@ -118,7 +118,7 @@ describe('claudeStatuslineInstaller', () => {
     await installStatusline(); // no settings.json yet: the install creates it
     await uninstallStatusline();
 
-    expect(fs.existsSync(`${settingsPath()}.pixel-agents.backup`)).toBe(false);
+    expect(fs.existsSync(`${settingsPath()}.pixelmates.backup`)).toBe(false);
   });
 
   // Each character sh would otherwise interpret, plus a newline: the original round-trips exactly, and the wrapped
@@ -158,7 +158,7 @@ describe('claudeStatuslineInstaller', () => {
 
   // The wrapper runs the original through sh: chained into a Windows status line, it would break it.
   it('refuses to install on Windows and leaves settings.json byte for byte', async () => {
-    writeSettings({ statusLine: TAVO_STATUS_LINE });
+    writeSettings({ statusLine: USER_STATUS_LINE });
     const before = fs.readFileSync(settingsPath(), 'utf-8');
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32');
 
@@ -170,10 +170,10 @@ describe('claudeStatuslineInstaller', () => {
 
   // A chained command whose script is missing blanks the user's status line instead of running it.
   it('refuses to chain when the wrapper script is not on disk', async () => {
-    writeSettings({ statusLine: TAVO_STATUS_LINE });
+    writeSettings({ statusLine: USER_STATUS_LINE });
     fs.rmSync(teePath());
 
     await expect(installStatusline()).rejects.toThrow(/wrapper script is missing/);
-    expect(readSettings().statusLine).toEqual(TAVO_STATUS_LINE);
+    expect(readSettings().statusLine).toEqual(USER_STATUS_LINE);
   });
 });

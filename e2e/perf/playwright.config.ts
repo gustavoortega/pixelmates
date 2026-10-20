@@ -4,11 +4,11 @@ import path from 'path';
 /**
  * Render cost measurement, outside the e2e suite (e2e/playwright.config.ts never sees it): the
  * dev server's scenes sampled for frames drawn, animation frames requested and main-thread task
- * time. `npm run e2e:perf` starts the branch's dev server; PIXEL_AGENTS_PERF_URL measures one
+ * time. `npm run e2e:perf` starts the branch's dev server; PIXELMATES_PERF_URL measures one
  * already running instead (another checkout's, to compare).
  */
 const PORT = 5199;
-const externalUrl = process.env['PIXEL_AGENTS_PERF_URL'];
+const externalUrl = process.env['PIXELMATES_PERF_URL'];
 
 export default defineConfig({
   testDir: __dirname,

@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { isDeepStrictEqual } from 'util';
 
+import type { HookInstallOptions } from '../../../../../core/src/provider.js';
 import { HOOK_SCRIPTS_DIR } from '../../../constants.js';
 import {
   makeTeeOnlyStatusLine,
@@ -14,12 +15,12 @@ import {
   CLAUDE_HOOK_EVENTS,
   CLAUDE_HOOK_SCRIPT_NAME,
   HOOK_SCRIPT_NAMES,
-  LEGACY_HOOK_SCRIPT_NAME,
   SETTINGS_BACKUP_SUFFIX,
   SETTINGS_FRESH_FILE_MODE,
   SETTINGS_MUTATE_ATTEMPTS,
   SETTINGS_MUTATE_RETRY_DELAY_MS,
   SETTINGS_TMP_SUFFIX,
+  UPSTREAM_HOOK_PATH_SUFFIXES,
 } from './constants.js';
 
 /** A single hook entry in Claude Code's ~/.claude/settings.json hooks config. */
@@ -45,7 +46,7 @@ function getClaudeSettingsPath(): string {
   return path.join(os.homedir(), '.claude', 'settings.json');
 }
 
-/** Returns the destination path for the hook script (~/.pixel-agents/hooks/claude-hook.js). */
+/** Returns the destination path for the hook script (~/.pixelmates/hooks/claude-hook.js). */
 function getHookScriptPath(): string {
   return path.join(os.homedir(), HOOK_SCRIPTS_DIR, CLAUDE_HOOK_SCRIPT_NAME);
 }
@@ -165,7 +166,7 @@ export async function mutateClaudeSettings(
   throw lastError ?? new Error(SETTINGS_UNPARSEABLE_MESSAGE);
 }
 
-/** One-time safety net: before Pixel Agents' first-ever modification of
+/** One-time safety net: before pixelmates' first-ever modification of
  *  settings.json, copy it aside. Never overwritten after that, so even a future
  *  installer bug leaves the user a recoverable copy of their pre-Pixel-Agents
  *  file.
@@ -191,7 +192,7 @@ export function backupClaudeSettingsOnce(settingsPath: string): void {
   const backupPath = settingsPath + SETTINGS_BACKUP_SUFFIX;
   try {
     fs.copyFileSync(settingsPath, backupPath, fs.constants.COPYFILE_EXCL);
-    console.log(`[Pixel Agents] Backed up Claude settings to ${backupPath}`);
+    console.log(`[pixelmates] Backed up Claude settings to ${backupPath}`);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
     if (!isRegularFile(backupPath)) {
@@ -298,11 +299,8 @@ function removeIfPresent(filePath: string): void {
   }
 }
 
-/** Legacy script name (before rename to claude-hook.js), as a path suffix. */
-const LEGACY_HOOK_PATH_SUFFIX = `/${LEGACY_HOOK_SCRIPT_NAME}`;
-
-/** The path suffix we own: `/.pixel-agents/hooks/claude-hook.js`. The leading
- *  separator is load-bearing — without it `/opt/evil.pixel-agents/hooks/...`
+/** The path suffix we own: `/.pixelmates/hooks/claude-hook.js`. The leading
+ *  separator is load-bearing — without it `/opt/evil.pixelmates/hooks/...`
  *  and `my-pixel-agents-hook.js` match by substring. */
 const HOOK_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${CLAUDE_HOOK_SCRIPT_NAME}`;
 
@@ -313,10 +311,10 @@ const HOOK_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${CLAUDE_HOOK_SCRIPT_NAME}`;
  * generic name another Claude tool could plausibly use, and substring tests
  * claim unrelated commands. Empirically, plain `includes` classified all of
  * these as ours — and `uninstallHooks` then DELETED them:
- *   node /opt/.pixel-agents/hooks/claude-hook.js.backup   (a different file)
- *   true # /opt/.pixel-agents/hooks/claude-hook.js        (a comment)
- *   wrapper --note=".pixel-agents/hooks/claude-hook.js" x (an argument)
- *   node /opt/evil.pixel-agents/hooks/claude-hook.js      (no token boundary)
+ *   node /opt/.pixelmates/hooks/claude-hook.js.backup   (a different file)
+ *   true # /opt/.pixelmates/hooks/claude-hook.js        (a comment)
+ *   wrapper --note=".pixelmates/hooks/claude-hook.js" x (an argument)
+ *   node /opt/evil.pixelmates/hooks/claude-hook.js      (no token boundary)
  *   node /opt/my-pixel-agents-hook.js.bak                 (legacy, no boundary)
  * Deleting a third-party hook is the same "we destroyed the user's config"
  * class of bug this whole module exists to fix, so identity is anchored at
@@ -344,7 +342,7 @@ const HOOK_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${CLAUDE_HOOK_SCRIPT_NAME}`;
  * - The FIRST token only. A command is `node <script>` or `<script>`; our path
  *   appearing later is an argument or a comment, not the thing being run.
  * - ABSOLUTE paths only. We always write one, and a RELATIVE
- *   `.pixel-agents/hooks/claude-hook.js` resolves against whatever directory
+ *   `.pixelmates/hooks/claude-hook.js` resolves against whatever directory
  *   Claude Code happens to run in — so it names a project-local file that is
  *   almost certainly not ours, and deleting it would be the same mistake as
  *   deleting a lookalike.
@@ -364,7 +362,14 @@ function isOurHookCommand(command: string): boolean {
   // Both suffix constants are lower-case, so folding the token is the whole
   // normalization.
   const normalized = token.toLowerCase();
-  return normalized.endsWith(HOOK_PATH_SUFFIX) || normalized.endsWith(LEGACY_HOOK_PATH_SUFFIX);
+  return normalized.endsWith(HOOK_PATH_SUFFIX);
+}
+
+/** A hook command that runs upstream Pixel Agents' script. Same anchoring as isOurHookCommand, and never ours:
+ *  uninstall leaves it alone, only a ticked `replaceLegacy` removes it. */
+function isUpstreamHookCommand(command: string): boolean {
+  const token = splitScriptCommand(command)?.script.toLowerCase() ?? null;
+  return token !== null && UPSTREAM_HOOK_PATH_SUFFIXES.some((suffix) => token.endsWith(suffix));
 }
 
 /** Whether any command in the entry is ours (used by areHooksInstalled). */
@@ -387,6 +392,18 @@ function isOurHook(hook: ClaudeHookEntry['hooks'][number]): boolean {
     isOurHookCommand(hook.command)
   );
 }
+
+/** A single hook object that runs upstream Pixel Agents' script. */
+function isUpstreamHook(hook: ClaudeHookEntry['hooks'][number]): boolean {
+  return (
+    hook !== null &&
+    typeof hook === 'object' &&
+    typeof hook.command === 'string' &&
+    isUpstreamHookCommand(hook.command)
+  );
+}
+
+type HookMatcher = (hook: ClaudeHookEntry['hooks'][number]) => boolean;
 
 /** Whether the parsed settings hold nothing a backup could preserve: every
  *  top-level key is `hooks` or `statusLine`, and everything in them is exactly
@@ -488,7 +505,7 @@ function isTeeOnlyStatusLine(value: unknown): boolean {
  *  A unique symbol, never `null`: `null` is a value a user's settings.json can
  *  legitimately contain inside a hooks array, and using it as the sentinel made
  *  us DELETE it. Observed: `{"hooks":{"Stop":[null,"third-party-junk"]}}` — a
- *  file with no Pixel Agents command anywhere — came back rewritten as
+ *  file with no pixelmates command anywhere — came back rewritten as
  *  `{"hooks":{"Stop":["third-party-junk"]}}` and logged "Hooks removed". A
  *  sentinel that can collide with user data is a sentinel that eats user data;
  *  a symbol cannot appear in parsed JSON. */
@@ -499,13 +516,16 @@ const DROP_ENTRY = Symbol('drop-entry');
  *  Filtering at the entry level would be wrong: an entry holds an ARRAY of
  *  hooks, and a user who hand-merged our command into their own entry must not
  *  lose theirs when we clean up ours. */
-function withoutOurHooks(entry: ClaudeHookEntry): ClaudeHookEntry | typeof DROP_ENTRY {
+function withoutMatchingHooks(
+  entry: ClaudeHookEntry,
+  matches: HookMatcher,
+): ClaudeHookEntry | typeof DROP_ENTRY {
   // Junk elements (null, a scalar, an object without a hooks array) are passed
   // through untouched rather than dereferenced: none of them can be ours, and
   // crashing on one would block install/uninstall on a file we are trying to
   // clean up.
   if (entry === null || typeof entry !== 'object' || !Array.isArray(entry.hooks)) return entry;
-  const kept = entry.hooks.filter((h) => !isOurHook(h));
+  const kept = entry.hooks.filter((h) => !matches(h));
   if (kept.length === entry.hooks.length) return entry;
   if (kept.length === 0) return DROP_ENTRY;
   return { ...entry, hooks: kept };
@@ -514,9 +534,12 @@ function withoutOurHooks(entry: ClaudeHookEntry): ClaudeHookEntry | typeof DROP_
 /** Strip our commands from one event's entry array. Returns the new array, or
  *  null when nothing of ours was in it (so the caller leaves the key alone —
  *  we never rewrite a field we did not author). */
-function withoutOurEntries(entries: ClaudeHookEntry[]): ClaudeHookEntry[] | null {
+function withoutOurEntries(
+  entries: ClaudeHookEntry[],
+  matches: HookMatcher = isOurHook,
+): ClaudeHookEntry[] | null {
   const filtered = entries
-    .map(withoutOurHooks)
+    .map((entry) => withoutMatchingHooks(entry, matches))
     .filter((e): e is ClaudeHookEntry => e !== DROP_ENTRY);
   // Length alone misses a slimmed shared entry (entry kept, our command removed
   // from inside it) — compare content.
@@ -544,7 +567,7 @@ function makeHookEntry(): ClaudeHookEntry {
 }
 
 /**
- * Whether ANY Pixel Agents hook command is present in ~/.claude/settings.json.
+ * Whether ANY pixelmates hook command is present in ~/.claude/settings.json.
  *
  * "Any", not "all 12", and the difference is the whole point. Every caller asks
  * this question for one of two reasons — "are our hooks firing right now?"
@@ -582,30 +605,54 @@ export function areHooksInstalled(): boolean {
   );
 }
 
+/** Whether upstream Pixel Agents' hook commands are in ~/.claude/settings.json: the consent dialog then offers to
+ *  replace them. An unreadable file reads as "none", like areHooksInstalled. */
+export function hasUpstreamHooks(): boolean {
+  let settings: ClaudeSettings;
+  try {
+    settings = readClaudeSettings();
+  } catch {
+    return false;
+  }
+  const hooks = settings.hooks;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return false;
+  return Object.values(hooks).some(
+    (entries) =>
+      Array.isArray(entries) &&
+      entries.some(
+        (entry) =>
+          entry !== null &&
+          typeof entry === 'object' &&
+          Array.isArray(entry.hooks) &&
+          entry.hooks.some(isUpstreamHook),
+      ),
+  );
+}
+
 /**
- * Install Pixel Agents hook entries into ~/.claude/settings.json for
+ * Install pixelmates hook entries into ~/.claude/settings.json for
  * Notification, Stop, and PermissionRequest events. Idempotent: removes
- * any existing Pixel Agents entries before adding fresh ones.
+ * any existing pixelmates entries before adding fresh ones.
  *
  * Rejects (before any write) when settings.json exists but cannot be parsed or
  * keeps changing concurrently — callers surface the error to the user instead
  * of installing.
  */
-export async function installHooks(): Promise<void> {
+export async function installHooks(options: HookInstallOptions = {}): Promise<void> {
   let wrote: boolean;
   try {
-    wrote = await installEntries();
+    wrote = await installEntries(options.replaceLegacy === true);
   } catch (e) {
     throw new Error(`${e instanceof Error ? e.message : String(e)} — hooks not installed.`, {
       cause: e,
     });
   }
   if (wrote) {
-    console.log('[Pixel Agents] Hooks installed in ~/.claude/settings.json');
+    console.log('[pixelmates] Hooks installed in ~/.claude/settings.json');
   }
 }
 
-function installEntries(): Promise<boolean> {
+function installEntries(replaceLegacy: boolean): Promise<boolean> {
   return mutateClaudeSettings((settings) => {
     if (settings.hooks === undefined || settings.hooks === null) {
       settings.hooks = {};
@@ -619,6 +666,20 @@ function installEntries(): Promise<boolean> {
     }
     const hooks = settings.hooks;
     let changed = false;
+
+    // The user ticked "replace": upstream Pixel Agents' entries go first, on every event. Without the tick they are
+    // not touched at all; their path differs from ours, so both installs run side by side.
+    if (replaceLegacy) {
+      for (const event of Object.keys(hooks)) {
+        const entries = hooks[event];
+        if (!Array.isArray(entries)) continue;
+        const filtered = withoutOurEntries(entries, isUpstreamHook);
+        if (filtered === null) continue;
+        changed = true;
+        if (filtered.length === 0) delete hooks[event];
+        else hooks[event] = filtered;
+      }
+    }
 
     // Migration sweep FIRST: strip our commands from every event we no longer
     // install. The per-event loop below only touches listed events, so without
@@ -662,7 +723,7 @@ function installEntries(): Promise<boolean> {
         throw new Error(settingsNonArrayEventMessage(event));
       }
       const entries = hooks[event];
-      // Remove any existing Pixel Agents commands (in case the script path changed)
+      // Remove any existing pixelmates commands (in case the script path changed)
       const filtered = (withoutOurEntries(entries) ?? entries).concat(makeHookEntry());
       if (JSON.stringify(filtered) !== JSON.stringify(entries)) {
         hooks[event] = filtered;
@@ -673,7 +734,7 @@ function installEntries(): Promise<boolean> {
   });
 }
 
-/** Remove all Pixel Agents hook entries from ~/.claude/settings.json. Cleans up empty objects.
+/** Remove all pixelmates hook entries from ~/.claude/settings.json. Cleans up empty objects.
  *  Rejects (before any write) when the file cannot be parsed — same protection
  *  as install: never rewrite a file we could not read. Callers surface the
  *  error; claiming success after an aborted uninstall is how a "removed"
@@ -714,12 +775,12 @@ export async function uninstallHooks(): Promise<void> {
     });
   }
   if (wrote) {
-    console.log('[Pixel Agents] Hooks removed from ~/.claude/settings.json');
+    console.log('[pixelmates] Hooks removed from ~/.claude/settings.json');
   }
 }
 
 /** Copy the shipped scripts (the hook script and the status line wrapper) from
- *  the extension to ~/.pixel-agents/hooks/. They ship together, so every
+ *  the extension to ~/.pixelmates/hooks/. They ship together, so every
  *  install path refreshes both. Returns true only when every script was
  *  copied, false if a source was missing or a copy failed, so callers can
  *  report the failure instead of logging a false success (issue #333: a path
@@ -732,7 +793,7 @@ export function copyHookScript(extensionPath: string): boolean {
       fs.mkdirSync(dstDir, { recursive: true, mode: 0o700 });
     }
   } catch (e) {
-    console.error(`[Pixel Agents] Failed to copy hook script: ${e}`);
+    console.error(`[pixelmates] Failed to copy hook script: ${e}`);
     return false;
   }
   let allCopied = true;
@@ -741,15 +802,15 @@ export function copyHookScript(extensionPath: string): boolean {
     const dst = path.join(dstDir, name);
     try {
       if (!fs.existsSync(src)) {
-        console.warn(`[Pixel Agents] Hook script not found at ${src}`);
+        console.warn(`[pixelmates] Hook script not found at ${src}`);
         allCopied = false;
         continue;
       }
       fs.copyFileSync(src, dst);
       fs.chmodSync(dst, 0o700);
-      console.log(`[Pixel Agents] Hook script installed at ${dst}`);
+      console.log(`[pixelmates] Hook script installed at ${dst}`);
     } catch (e) {
-      console.error(`[Pixel Agents] Failed to copy hook script: ${e}`);
+      console.error(`[pixelmates] Failed to copy hook script: ${e}`);
       allCopied = false;
     }
   }

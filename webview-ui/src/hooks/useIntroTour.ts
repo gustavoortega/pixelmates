@@ -27,7 +27,7 @@ export function useIntroTour(args: {
    *  only ever renders with a verdict — never one it does not have. */
   installPending: boolean;
   /** A consent-step button click: sends the choice, arms the verdict wait. */
-  onChoice: (choice: ConsentChoice) => void;
+  onChoice: (choice: ConsentChoice, replaceLegacy?: boolean) => void;
   /** Every way the tour ends. Sends NOTHING — an unanswered ask must return
    *  on the next page load (in-session reconnects are deduped by the webview). */
   onClose: () => void;
@@ -66,11 +66,17 @@ export function useIntroTour(args: {
   const providerIdRef = useRef<string | null>(null);
   providerIdRef.current = state.intro?.providerId ?? providerIdRef.current;
 
-  const onChoice = useCallback((choice: ConsentChoice) => {
+  const onChoice = useCallback((choice: ConsentChoice, replaceLegacy = false) => {
     const providerId = providerIdRef.current;
     if (!providerId) return; // no ask on screen: nothing to answer about
     dispatch({ kind: 'choiceSent', choice });
-    transport.send({ type: 'hooksConsentResponse', providerId, choice });
+    transport.send({
+      type: 'hooksConsentResponse',
+      providerId,
+      choice,
+      // The checkbox is about what Install writes; it rides no other answer.
+      ...(choice === 'install' && replaceLegacy ? { replaceLegacy: true } : {}),
+    });
   }, []);
 
   const { dismissConsentRequest } = args;

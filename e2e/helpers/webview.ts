@@ -15,7 +15,6 @@ const MIN_PANEL_HEIGHT_PX = 320;
 export interface WebviewSettings {
   watchAllSessions?: boolean;
   hooksEnabled?: boolean;
-  alwaysShowLabels?: boolean;
   ghostHeadlessAgents?: boolean;
   debugView?: boolean;
 }
@@ -511,9 +510,6 @@ export async function setSettings(frame: WebviewSurface, settings: WebviewSettin
   if (settings.hooksEnabled !== undefined) {
     await setCheckbox(settingsModal, 'Instant Detection (Hooks)', settings.hooksEnabled);
   }
-  if (settings.alwaysShowLabels !== undefined) {
-    await setCheckbox(settingsModal, 'Always Show Labels', settings.alwaysShowLabels);
-  }
   if (settings.ghostHeadlessAgents !== undefined) {
     await setCheckbox(settingsModal, 'Display Headless as Ghosts', settings.ghostHeadlessAgents);
   }
@@ -529,7 +525,7 @@ export async function setSettings(frame: WebviewSurface, settings: WebviewSettin
 
 /**
  * Enable Watch All Sessions so hooks-only external sessions are adopted.
- * (Always Show Labels and hooks are already on via the fixture-seeded
+ * (Hooks are already on via the fixture-seeded
  * config.json and the product default — see e2e/helpers/launch.ts.)
  */
 export async function configureHookServerTestSettings(frame: WebviewSurface): Promise<void> {

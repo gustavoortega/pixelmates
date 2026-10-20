@@ -6,7 +6,7 @@
  * Takes every registered provider out of ~/.claude/settings.json (the hook
  * entries, and the status line wrapper, whose original command goes back in
  * place) so an uninstalled extension leaves nothing running behind the user's
- * back. The copied scripts under ~/.pixel-agents/hooks/ are left in place: the
+ * back. The copied scripts under ~/.pixelmates/hooks/ are left in place: the
  * standalone CLI shares them, and a wrapper the restore could not undo (a
  * status line edited by hand since) still needs its script to keep running the
  * user's command.
@@ -23,7 +23,7 @@ async function uninstallAll(): Promise<void> {
     try {
       await provider.uninstallHooks();
     } catch (err: unknown) {
-      console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`[pixelmates] ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
