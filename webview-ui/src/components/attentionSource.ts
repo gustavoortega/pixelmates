@@ -24,6 +24,8 @@ export function attentionOf(
       tools: agentTools[id],
       status: agentStatuses[id],
       awaitingInput: ch?.waitingAwaitingInput === true,
+      awaitingReason: os.awaitingReasons.get(id),
+      question: os.questions.get(id),
       currentTool: ch?.currentTool,
       health: os.health.get(id),
       tripwire: os.tripwires.get(id),

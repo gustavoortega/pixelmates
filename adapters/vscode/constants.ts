@@ -2,7 +2,7 @@
 // The user-level persistence contract, surfaced as one adapter-facing barrel so
 // VS Code code never reaches into server/src/constants.js directly. Only
 // LAYOUT_REVISION_KEY has an adapter consumer today (PixelAgentsViewProvider);
-// the rest travel with it because they describe the same ~/.pixel-agents
+// the rest travel with it because they describe the same ~/.pixelmates
 // file layout, and splitting the set would leave the next caller guessing which
 // half to import from where.
 /** @public */
@@ -26,7 +26,7 @@ export const GLOBAL_KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 export const GLOBAL_KEY_SHOW_AREAS = 'pixel-agents.showAreas';
 
 /**
- * Folder→Area mappings live inside the shared ~/.pixel-agents/config.json
+ * Folder→Area mappings live inside the shared ~/.pixelmates/config.json
  * (vscode.areaMappings), not in VS Code globalState. Kept here as a key
  * constant for callers that need to reference it symbolically.
  *

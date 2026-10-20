@@ -206,6 +206,66 @@ test.describe('Standalone / monitor attention rail', () => {
     await expect(t).toHaveCount(0);
   });
 
+  // B2/B6: a question tool puts a ticket with the agent's own words, cut to two lines, so three
+  // tickets still sit inside the rail at 800 px; answering it removes the ticket.
+  test('a question tool puts a two-line ticket with its text, and three tickets fit at 800 px @area:standalone', async ({
+    page,
+    standalone,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const long =
+      'Which database should the migration target when the staging copy is stale? '.repeat(2);
+    const ask = (sessionId: string, question: string) =>
+      sendHookEvent(standalone.hookServerConfig, {
+        session_id: sessionId,
+        hook_event_name: 'PreToolUse',
+        tool_name: 'AskUserQuestion',
+        tool_input: { questions: [{ question }] },
+      });
+    const a = await startAgent(page, standalone, 'rail-question-a', {
+      name: 'Bash',
+      input: { command: 'git push' },
+    });
+    const b = await startAgent(page, standalone, 'rail-question-b', {
+      name: 'Read',
+      input: { file_path: '/tmp/x' },
+    });
+    const c = await startAgent(page, standalone, 'rail-question-c', {
+      name: 'Read',
+      input: { file_path: '/tmp/y' },
+    });
+    await ask('rail-question-a', long);
+    await ask('rail-question-b', 'Ship it?');
+    await ask('rail-question-c', long);
+
+    for (const id of [a, b, c]) {
+      await expect(ticket(page, id)).toHaveAttribute('data-kind', 'question');
+    }
+    await expect(ticket(page, b).locator('.tk-why')).toHaveText('Ship it?');
+    const rail = await page.getByTestId('monitor-rail').boundingBox();
+    for (const id of [a, b, c]) {
+      const box = await ticket(page, id).boundingBox();
+      expect(box!.y + box!.height, `ticket ${id} bottom`).toBeLessThanOrEqual(
+        rail!.y + rail!.height + 0.5,
+      );
+      expect(box!.y + box!.height, `ticket ${id} in the window`).toBeLessThanOrEqual(800);
+    }
+    const lines = await ticket(page, a)
+      .locator('.tk-why')
+      .evaluate((e) => {
+        const style = getComputedStyle(e);
+        return Math.round(e.getBoundingClientRect().height / parseFloat(style.lineHeight));
+      });
+    expect(lines).toBeLessThanOrEqual(2);
+
+    await sendHookEvent(standalone.hookServerConfig, {
+      session_id: 'rail-question-b',
+      hook_event_name: 'PostToolUse',
+      tool_name: 'AskUserQuestion',
+    });
+    await expect(ticket(page, b)).toHaveCount(0);
+  });
+
   // C5.2: the minutes are the server's permissionSince, which the reconnect's resend restates.
   test('after a reconnect the ticket keeps the minutes the server dated its prompt to @area:standalone', async ({
     page,

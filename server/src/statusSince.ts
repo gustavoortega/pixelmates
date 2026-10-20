@@ -6,7 +6,8 @@ import type { AgentState } from './types.js';
  *
  * Stamped only when the status a client sees changes: the parser and PreToolUse repeat
  * `active` on every tool call, and restamping there would date a long turn to its last
- * call. A waiting agent on a question and one that finished are two statuses. The time is
+ * call. A waiting agent on a question and one that finished are two statuses; one that sat
+ * idle after finishing is the second, so the idle prompt never restamps. The time is
  * the server clock for hooks and timers, and the record's own timestamp for a status read
  * from the transcript, so a replayed history is not dated to the moment it was read.
  */
@@ -27,6 +28,21 @@ export function stampStatus(
   if (agent.statusKey === key) return;
   agent.statusKey = key;
   agent.statusSince = at;
+}
+
+/** The `awaitingInput` the stamp keys on: a pending question only. An idle wait is `Done` that
+ *  went quiet, the same status and the same start. */
+export function isQuestion(agent: AgentState | undefined, awaitingInput: boolean): boolean {
+  return awaitingInput && agent?.awaitingReason !== 'idle';
+}
+
+/** The wire fields that say why a waiting agent awaits the user. Only for awaitingInput. */
+export function awaitingFields(agent: AgentState): { awaitingReason?: string; question?: string } {
+  if (agent.awaitingInput !== true || agent.awaitingReason === undefined) return {};
+  return {
+    awaitingReason: agent.awaitingReason,
+    ...(agent.awaitingReason === 'question' && agent.question ? { question: agent.question } : {}),
+  };
 }
 
 /** Replace the stamp outright: a status derived from a transcript read anew (adoption, a
@@ -62,10 +78,14 @@ export function statusBroadcast(
   awaitingInput = false,
 ): Record<string, unknown> {
   const message: Record<string, unknown> = { type: 'agentStatus', id, status };
-  if (status === 'waiting') message.awaitingInput = awaitingInput;
+  if (status === 'waiting') {
+    message.awaitingInput = awaitingInput;
+    if (awaitingInput && agent) Object.assign(message, awaitingFields(agent));
+  }
   if (agent) {
-    stampStatus(agent, status, awaitingInput, at);
-    const since = statusSince(agent, status, awaitingInput);
+    const question = isQuestion(agent, awaitingInput);
+    stampStatus(agent, status, question, at);
+    const since = statusSince(agent, status, question);
     if (since !== undefined) message.since = since;
   }
   return message;

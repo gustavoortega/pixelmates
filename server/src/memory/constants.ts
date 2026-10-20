@@ -3,7 +3,7 @@
  * stdio bundle pulls in nothing else from the office runtime.
  */
 
-export const SERVER_NAME = 'pixel-agents-memory';
+export const SERVER_NAME = 'pixelmates-memory';
 export const LOG_PREFIX = '[memory-mcp]';
 
 /** Newest first. initialize echoes the client's version when it is listed here, else answers with the first. */

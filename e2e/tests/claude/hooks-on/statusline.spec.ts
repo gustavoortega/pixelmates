@@ -53,7 +53,7 @@ test.describe('Status line wrapper / VS Code', () => {
     narrator.step('Install');
     await dialog.getByRole('button', { name: 'Install Hooks' }).click();
 
-    const tee = path.join(tmpHome, '.pixel-agents', 'hooks', 'statusline-tee.js');
+    const tee = path.join(tmpHome, '.pixelmates', 'hooks', 'statusline-tee.js');
     await expect
       .poll(() => readStatusLine(tmpHome), { timeout: 15_000 })
       .toEqual({ ...USER_STATUS_LINE, command: `node "${tee}" 'echo user-status'` });

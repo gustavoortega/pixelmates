@@ -24,7 +24,7 @@ import { aggregateWindow, biggestBlockTotal, resolveWindows } from './tokenAggre
 /**
  * Token ledger: totals the tokens a CLI's transcripts report, per area and per session, over a 5-hour block and a
  * week. It only reads (streams, one file at a time, yielding to the event loop between files), re-reads only the
- * bytes appended since the last pass, and keeps its progress in `~/.pixel-agents/ledger-cache.json`.
+ * bytes appended since the last pass, and keeps its progress in `~/.pixelmates/ledger-cache.json`.
  *
  * Everything CLI-specific lives behind `TranscriptUsageSource`; this module sees `UsageLine`s.
  */
@@ -59,7 +59,7 @@ export interface TokenLedgerOptions {
   getBudgets: () => TokenBudgets;
   /** Receives every changed aggregate (never more often than once per tick, except on first completion / refresh). */
   onChange: (message: TokenUsage) => void;
-  /** Defaults to `<home>/.pixel-agents/ledger-cache.json`. Tests always pass a temp path. */
+  /** Defaults to `<home>/.pixelmates/ledger-cache.json`. Tests always pass a temp path. */
   cachePath?: string;
   /** Defaults to `source.usageRoot()`. Tests always pass a temp dir. */
   root?: string;
@@ -127,11 +127,11 @@ export class TokenLedger {
   start(): void {
     if (this.tickTimer || this.disposed) return;
     void this.runPass().catch((err: unknown) => {
-      console.error('[Pixel Agents] Token ledger scan failed:', err);
+      console.error('[pixelmates] Token ledger scan failed:', err);
     });
     this.tickTimer = setInterval(() => {
       void this.runPass().catch((err: unknown) => {
-        console.error('[Pixel Agents] Token ledger scan failed:', err);
+        console.error('[pixelmates] Token ledger scan failed:', err);
       });
     }, this.options.tickMs ?? TOKEN_LEDGER_TICK_MS);
     this.tickTimer.unref();
@@ -442,7 +442,7 @@ export class TokenLedger {
       }
       this.dirty = false;
     } catch (err) {
-      console.error('[Pixel Agents] Failed to write token ledger cache:', err);
+      console.error('[pixelmates] Failed to write token ledger cache:', err);
     }
   }
 }

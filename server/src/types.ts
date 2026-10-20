@@ -6,6 +6,7 @@ import type {
   AgentLoop,
   AgentSession,
   AgentTests,
+  AwaitingReason,
   CacheTtlSeconds,
   PermissionMode,
 } from '../../core/src/messages.js';
@@ -34,6 +35,11 @@ export interface AgentState {
   /** Meaningful while `isWaiting`: true when the agent stopped on a question for
    *  the user ("Waiting for input"), false/absent when it finished ("Done"). */
   awaitingInput?: boolean;
+  /** Why it awaits the user, set with `awaitingInput` (awaitingQuestion.ts): a pending
+   *  question tool, or a finished turn that sat idle. */
+  awaitingReason?: AwaitingReason;
+  /** The question's text, memory only (never logged or persisted); see awaitingQuestion.ts. */
+  question?: string;
   /** True when the transcript tail said the agent is mid-turn at adoption or
    *  restore, before any live event confirmed it. Cleared by the first live
    *  record or hook event. Lets a reconnecting client be told `active`. */

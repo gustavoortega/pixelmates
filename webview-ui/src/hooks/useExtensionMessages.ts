@@ -636,6 +636,9 @@ export function useExtensionMessages(
             providerId,
             headline: msg.headline as string,
             disclosure: msg.disclosure as string,
+            ...(typeof msg.replaceLegacyLabel === 'string'
+              ? { replaceLegacyLabel: msg.replaceLegacyLabel }
+              : {}),
           };
           setConsentQueue((q) => [...q, request]);
         }

@@ -34,6 +34,9 @@ const HITS: HitRow[] = [
   [...B('aws configure export-credentials'), 'cloud-credentials'],
   [...B('cat ~/.ssh/id_ed25519'), 'ssh-private-key'],
   ['Read', { file_path: '/x/.claude/settings.json' }, 'sensor-tamper'],
+  ['Edit', { file_path: '/x/.pixelmates/hooks/claude-hook.js' }, 'sensor-tamper'],
+  // Upstream Pixel Agents' folder holds the same kind of sensor, so touching it is tampering too.
+  ['Edit', { file_path: '/x/.pixel-agents/hooks/claude-hook.js' }, 'sensor-tamper'],
   [...B('source .env'), 'dotenv'],
   [...B('cp .env.example .env'), 'dotenv'],
   ['Write', { file_path: '/r/a.txt', content: 'key AKIAABCDEFGHIJKLMNOP' }, 'secret-literal'],

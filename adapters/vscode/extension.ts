@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { FileStateAdapter } from '../../server/src/fileStateAdapter.js';
+import { migrateDataDir } from '../../server/src/migrateDataDir.js';
 import {
   COMMAND_EXPORT_DEFAULT_LAYOUT,
   COMMAND_SHOW_PANEL,
@@ -13,9 +14,12 @@ import { PixelAgentsViewProvider } from './PixelAgentsViewProvider.js';
 let providerInstance: PixelAgentsViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log(`[Pixel Agents] PIXEL_AGENTS_DEBUG=${process.env.PIXEL_AGENTS_DEBUG ?? 'not set'}`);
+  console.log(`[pixelmates] PIXELMATES_DEBUG=${process.env.PIXELMATES_DEBUG ?? 'not set'}`);
 
-  // Shared file-backed state adapter (VS Code namespace in ~/.pixel-agents/config.json).
+  // Before the adapter creates ~/.pixelmates: the copy runs only while it has no config.
+  migrateDataDir();
+
+  // Shared file-backed state adapter (VS Code namespace in ~/.pixelmates/config.json).
   const adapter = new FileStateAdapter({ namespace: 'vscode' });
 
   // One-time migration from legacy workspaceState/globalState. Idempotent; runs every

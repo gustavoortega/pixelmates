@@ -42,7 +42,7 @@ describe('clientMessageHandler: hooks consent flow', () => {
 
   /** Put our command on every installed event, as a real install would. */
   function seedInstalledHooks(): void {
-    const command = `node "${path.join(tempHome, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+    const command = `node "${path.join(tempHome, '.pixelmates', 'hooks', 'claude-hook.js')}"`;
     const entry = { matcher: '', hooks: [{ type: 'command', command, timeout: 5 }] };
     fs.mkdirSync(path.join(tempHome, '.claude'), { recursive: true });
     fs.writeFileSync(
@@ -60,7 +60,7 @@ describe('clientMessageHandler: hooks consent flow', () => {
   /** The strongest possible "writes nothing": the config file was never even
    *  created. */
   function configJsonExists(): boolean {
-    return fs.existsSync(path.join(tempHome, '.pixel-agents', 'config.json'));
+    return fs.existsSync(path.join(tempHome, '.pixelmates', 'config.json'));
   }
 
   function answer(choice: unknown, providerId: unknown = 'claude'): void {
@@ -95,6 +95,70 @@ describe('clientMessageHandler: hooks consent flow', () => {
     }
     store.dispose();
     fs.rmSync(tempHome, { recursive: true, force: true });
+  });
+
+  // ── The other app (Pixel Agents) found in the same settings.json ─────
+
+  describe('replaceLegacy', () => {
+    function seedUpstreamHooks(): void {
+      const command = `node "${path.join(tempHome, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+      const entry = { matcher: '', hooks: [{ type: 'command', command, timeout: 5 }] };
+      fs.mkdirSync(path.join(tempHome, '.claude'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tempHome, '.claude', 'settings.json'),
+        JSON.stringify({ hooks: { Stop: [entry] } }),
+      );
+    }
+
+    function answerWith(extra: Record<string, unknown>, choice: unknown = 'install'): void {
+      handleClientMessage(
+        { type: 'hooksConsentResponse', providerId: 'claude', choice, ...extra },
+        (m) => sent.push(m),
+        ctx,
+      );
+    }
+
+    it('offers the checkbox only when upstream entries are on disk', async () => {
+      await connect();
+      expect(sent.find((m) => m.type === 'hooksConsentRequest')).not.toHaveProperty(
+        'replaceLegacyLabel',
+      );
+
+      sent.length = 0;
+      seedUpstreamHooks();
+      await connect();
+      expect(sent.find((m) => m.type === 'hooksConsentRequest')).toMatchObject({
+        replaceLegacyLabel: 'Replace Pixel Agents hooks (Pixel Agents stops updating)',
+      });
+    });
+
+    it('passes the tick to the install, and only an exact true counts', async () => {
+      const calls: Array<boolean | undefined> = [];
+      ctx.onSetHooksEnabled = (_id, _enabled, options) => {
+        calls.push(options?.replaceLegacy);
+      };
+
+      answerWith({ replaceLegacy: true });
+      await settle();
+      answerWith({ replaceLegacy: 'yes' });
+      await settle();
+      answerWith({});
+      await settle();
+
+      expect(calls).toEqual([true, false, false]);
+    });
+
+    it('never forwards the tick for a decline', async () => {
+      const calls: Array<boolean | undefined> = [];
+      ctx.onSetHooksEnabled = (_id, _enabled, options) => {
+        calls.push(options?.replaceLegacy);
+      };
+
+      answerWith({ replaceLegacy: true }, 'never');
+      await settle();
+
+      expect(calls).toEqual([]);
+    });
   });
 
   // ── hooksConsentRequest: who is asked, and on what terms ─────
@@ -545,7 +609,7 @@ describe('clientMessageHandler: hooks consent flow', () => {
 
     /** What the wrapper install leaves: our wrapper as the whole status line. */
     function seedWrapper(): void {
-      const tee = path.join(tempHome, '.pixel-agents', 'hooks', 'statusline-tee.js');
+      const tee = path.join(tempHome, '.pixelmates', 'hooks', 'statusline-tee.js');
       fs.mkdirSync(path.join(tempHome, '.claude'), { recursive: true });
       fs.writeFileSync(
         path.join(tempHome, '.claude', 'settings.json'),

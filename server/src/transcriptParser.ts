@@ -1,7 +1,13 @@
-const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
+const debug = process.env.PIXELMATES_DEBUG !== '0';
 
 import type { HookProvider, SignalHit } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import {
+  clearAwaiting,
+  hasPendingQuestion,
+  questionText,
+  setAwaitingQuestion,
+} from './awaitingQuestion.js';
 import { SIGNAL_KEYS_MAX, TEXT_IDLE_DELAY_MS, TOOL_DONE_DELAY_MS } from './constants.js';
 import { updateContextUsage } from './contextUsage.js';
 import {
@@ -140,7 +146,7 @@ export function processTranscriptLine(
       agent.leadAgentId = undefined;
       if (debug) {
         console.log(
-          `[Pixel Agents] Agent ${agentId} team metadata: team=${agent.teamName}, role=${agent.agentName ?? 'lead'}`,
+          `[pixelmates] Agent ${agentId} team metadata: team=${agent.teamName}, role=${agent.agentName ?? 'lead'}`,
         );
       }
       // Link teammates to leads within the same team
@@ -200,17 +206,29 @@ export function processTranscriptLine(
 
       if (hasToolUse) {
         cancelWaitingTimer(agentId, waitingTimers);
-        agent.isWaiting = false;
+        // A question tool stops the turn on the user: the live twin of the adoption walk's
+        // awaitingInput. Any other tool call means the last question was answered.
+        const asked = blocks.find(
+          (b) => b.type === 'tool_use' && traits?.userQuestionTools.has(b.name ?? ''),
+        );
+        if (asked) {
+          setAwaitingQuestion(agent, questionText(asked.input));
+        } else {
+          agent.isWaiting = false;
+          clearAwaiting(agent);
+        }
         agent.hadToolsInTurn = true;
-        agents.broadcast(statusBroadcast(agentId, agent, 'active', turn?.timestampMs));
+        agents.broadcast(
+          asked
+            ? statusBroadcast(agentId, agent, 'waiting', turn?.timestampMs, true)
+            : statusBroadcast(agentId, agent, 'active', turn?.timestampMs),
+        );
         let hasNonExemptTool = false;
         for (const block of blocks) {
           if (block.type === 'tool_use' && block.id) {
             const toolName = block.name || '';
             const status = formatToolStatus(toolName, block.input || {});
-            console.log(
-              `[Pixel Agents] JSONL: Agent ${agentId} - tool start: ${block.id} ${status}`,
-            );
+            console.log(`[pixelmates] JSONL: Agent ${agentId} - tool start: ${block.id} ${status}`);
             agent.activeToolIds.add(block.id);
             agent.activeToolStatuses.set(block.id, status);
             agent.activeToolNames.set(block.id, toolName);
@@ -309,7 +327,7 @@ export function processTranscriptLine(
     } else if (record.type === 'assistant' && assistantContent === undefined) {
       // Assistant record with no recognizable content structure
       console.warn(
-        `[Pixel Agents] Agent ${agentId}: assistant record has no content. Keys: ${Object.keys(record).join(', ')}`,
+        `[pixelmates] Agent ${agentId}: assistant record has no content. Keys: ${Object.keys(record).join(', ')}`,
       );
     } else if (record.type === 'progress') {
       processProgressRecord(agentId, record, agents, waitingTimers, permissionTimers);
@@ -322,7 +340,7 @@ export function processTranscriptLine(
       cancelWaitingTimer(agentId, waitingTimers);
       clearAgentActivity(agent, agentId, agents, permissionTimers);
       agent.isWaiting = true;
-      agent.awaitingInput = false;
+      clearAwaiting(agent);
       agent.hadToolsInTurn = false;
       healthOnTurnEnd(agent, agents, traits);
       agents.broadcast(statusBroadcast(agentId, agent, 'waiting', turn?.timestampMs, false));
@@ -413,7 +431,7 @@ export function processTranscriptLine(
                 agent.isTeamLead = true;
                 if (debug) {
                   console.log(
-                    `[Pixel Agents] Agent ${agentId} spawned teammate "${teammateSpawn.teammateName}" -> lead of team ${teammateSpawn.teamName}`,
+                    `[pixelmates] Agent ${agentId} spawned teammate "${teammateSpawn.teammateName}" -> lead of team ${teammateSpawn.teamName}`,
                   );
                 }
                 linkTeammates(agentId, agent, agents);
@@ -434,7 +452,7 @@ export function processTranscriptLine(
                 isAsyncAgentResult(block)
               ) {
                 console.log(
-                  `[Pixel Agents] Agent ${agentId} background agent launched: ${completedToolId}`,
+                  `[pixelmates] Agent ${agentId} background agent launched: ${completedToolId}`,
                 );
                 agent.backgroundAgentToolIds.add(completedToolId);
                 // Current harnesses OMIT run_in_background from the tool_use
@@ -461,9 +479,16 @@ export function processTranscriptLine(
                 continue; // don't mark as done yet
               }
 
-              console.log(
-                `[Pixel Agents] JSONL: Agent ${agentId} - tool done: ${block.tool_use_id}`,
-              );
+              console.log(`[pixelmates] JSONL: Agent ${agentId} - tool done: ${block.tool_use_id}`);
+              // The answer to a question tool: the turn goes on, the ticket is gone.
+              if (
+                hasPendingQuestion(agent) &&
+                traits?.userQuestionTools.has(completedToolName ?? '')
+              ) {
+                agent.isWaiting = false;
+                clearAwaiting(agent);
+                agents.broadcast(statusBroadcast(agentId, agent, 'active', turn?.timestampMs));
+              }
               // If the completed tool spawned a subagent, clear its subagent tools
               if (isSubagentTool(completedToolName)) {
                 agent.activeSubagentToolIds.delete(completedToolId);
@@ -550,9 +575,7 @@ export function processTranscriptLine(
             // host clears every helper of the run.
             backgroundAgentCompletedCallback?.(agentId, completedToolId);
           } else if (agent.backgroundAgentToolIds.has(completedToolId)) {
-            console.log(
-              `[Pixel Agents] Agent ${agentId} background agent done: ${completedToolId}`,
-            );
+            console.log(`[pixelmates] Agent ${agentId} background agent done: ${completedToolId}`);
             agent.backgroundAgentToolIds.delete(completedToolId);
             agent.activeSubagentToolIds.delete(completedToolId);
             agent.activeSubagentToolNames.delete(completedToolId);
@@ -645,7 +668,7 @@ export function processTranscriptLine(
       }
 
       agent.isWaiting = true;
-      agent.awaitingInput = false;
+      clearAwaiting(agent);
       agent.permissionSent = false;
       agent.hadToolsInTurn = false;
       healthOnTurnEnd(agent, agents, traits);
@@ -677,7 +700,7 @@ export function processTranscriptLine(
         agent.seenUnknownRecordTypes.add(record.type);
         if (debug) {
           console.log(
-            `[Pixel Agents] JSONL: Agent ${agentId} - unrecognized record type '${record.type}'. ` +
+            `[pixelmates] JSONL: Agent ${agentId} - unrecognized record type '${record.type}'. ` +
               `Keys: ${Object.keys(record).join(', ')}`,
           );
         }
@@ -722,7 +745,7 @@ function noteToolVerdicts(
     if (verdicts.length > 0) (agent.toolVerdicts ??= new Map()).set(toolId, verdicts);
   } catch {
     // Runs mid-record: a verdict bug must not cost the tool start that follows.
-    console.warn(`[Pixel Agents] JSONL: Agent ${agent.id} - tool verdict failed`);
+    console.warn(`[pixelmates] JSONL: Agent ${agent.id} - tool verdict failed`);
   }
 }
 
@@ -855,7 +878,7 @@ function processProgressRecord(
         const toolName = block.name || '';
         const status = formatToolStatus(toolName, block.input || {});
         console.log(
-          `[Pixel Agents] Agent ${agentId} subagent tool start: ${block.id} ${status} (parent: ${parentToolId})`,
+          `[pixelmates] Agent ${agentId} subagent tool start: ${block.id} ${status} (parent: ${parentToolId})`,
         );
 
         // Track sub-tool IDs
@@ -894,7 +917,7 @@ function processProgressRecord(
     for (const block of content) {
       if (block.type === 'tool_result' && block.tool_use_id) {
         console.log(
-          `[Pixel Agents] Agent ${agentId} subagent tool done: ${block.tool_use_id} (parent: ${parentToolId})`,
+          `[pixelmates] Agent ${agentId} subagent tool done: ${block.tool_use_id} (parent: ${parentToolId})`,
         );
 
         // Remove from tracking

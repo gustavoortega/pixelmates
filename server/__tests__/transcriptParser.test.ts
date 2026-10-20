@@ -404,6 +404,68 @@ describe('transcriptParser: status truth (live path)', () => {
     expect(agent.isWaiting).toBe(true);
     expect(agent.activeToolIds.size).toBe(0);
   });
+
+  describe('a question tool', () => {
+    const ASK = {
+      questions: [{ question: 'Which database should the migration target?' }],
+    };
+    const feedLine = (line: string) =>
+      processTranscriptLine(1, line, agents, waitingTimers, permissionTimers);
+    const WIRE = {
+      type: 'agentStatus',
+      id: 1,
+      status: 'waiting',
+      awaitingInput: true,
+      awaitingReason: 'question',
+      question: 'Which database should the migration target?',
+    };
+
+    it('raises the question ticket from its tool_use and ends it with its result', () => {
+      agent.isWaiting = false;
+      feedLine(agentToolUseRecord('q1', 'AskUserQuestion', ASK));
+      expect(statuses()).toEqual([WIRE]);
+
+      messages.length = 0;
+      feedLine(toolResultRecord('q1', 'Postgres'));
+      expect(statuses()).toEqual([{ type: 'agentStatus', id: 1, status: 'active' }]);
+      expect(agent.question).toBeUndefined();
+    });
+
+    // The hook raised the ticket first; the transcript record that follows ~0.5 s later must
+    // neither flip it back to active nor date it again.
+    it('keeps the ticket and its start when the transcript catches up with the hook', () => {
+      // What the PreToolUse hook left behind: the ticket, dated by the server clock.
+      Object.assign(agent, {
+        isWaiting: false,
+        hookDelivered: true,
+        awaitingInput: true,
+        awaitingReason: 'question',
+        question: ASK.questions[0].question,
+        statusKey: 'waiting:input',
+        statusSince: 1_234,
+      });
+      feed({
+        type: 'assistant',
+        timestamp: '2026-10-20T10:00:00Z',
+        message: {
+          content: [{ type: 'tool_use', id: 'q1', name: 'AskUserQuestion', input: ASK }],
+        },
+      });
+      expect(statuses()).toEqual([{ ...WIRE, since: 1_234 }]);
+      expect(agent.isWaiting).toBe(true);
+    });
+
+    // K2b: the user's next prompt (UserPromptSubmit is not an installed hook) ends the wait.
+    it('ends when the user types a prompt instead of answering', () => {
+      agent.isWaiting = false;
+      feedLine(agentToolUseRecord('q1', 'AskUserQuestion', ASK));
+      messages.length = 0;
+      feed({ type: 'user', message: { content: 'never mind, use sqlite' } });
+      expect(statuses()).toEqual([{ type: 'agentStatus', id: 1, status: 'active' }]);
+      expect(agent.awaitingInput).toBeFalsy();
+      expect(agent.question).toBeUndefined();
+    });
+  });
 });
 
 /** A Bash result. A background launch carries the task id on toolUseResult. */

@@ -38,7 +38,7 @@ export const DEFAULT_TRIPWIRE_RULES: readonly TripwireRule[] = [
     severity: 'high',
     tool: /.*/,
     input: new RegExp(
-      String.raw`\.pixel-agents/|\.claude/(settings(\.local)?\.json|hooks/|\.credentials)|\.claude\.json\b`,
+      String.raw`\.(pixelmates|pixel-agents)/|\.claude/(settings(\.local)?\.json|hooks/|\.credentials)|\.claude\.json\b`,
       'i',
     ),
     ignoreKeys: PATH_IGNORE_KEYS,

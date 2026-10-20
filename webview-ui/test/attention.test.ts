@@ -97,6 +97,64 @@ describe('attentionTickets', () => {
     expect(ticket.reason).toBe(reason);
   });
 
+  // K1 / K6: a finished session that sat idle is told apart from one that asked something.
+  it('reads a question with its own words, an idle wait as finished, and falls back without text', () => {
+    expect(
+      tickets([
+        {
+          id: 1,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'question',
+          question: 'Which database?',
+          statusSince: NOW - 2 * M,
+        },
+        { id: 2, status: 'waiting', awaitingInput: true, awaitingReason: 'question' },
+        {
+          id: 3,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'idle',
+          question: 'stale text',
+          statusSince: NOW - 3 * M,
+        },
+      ]).needs,
+    ).toEqual([
+      [1, 'question', '?', 'Which database?', NOW - 2 * M],
+      [2, 'question', '?', 'Has a question', undefined],
+      [3, 'idle', '–', 'Finished, waiting for you', NOW - 3 * M],
+    ]);
+  });
+
+  // K1b: idle waits come after every blocked ticket, however old.
+  it('lists an older idle wait after a newer question and a newer prompt', () => {
+    const order = attentionTickets([
+      {
+        id: 1,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        statusSince: NOW - 60 * M,
+      },
+      {
+        id: 2,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'question',
+        statusSince: NOW - M,
+      },
+      { id: 3, tools: [pushRow], permissionSince: NOW - 2 * M },
+      {
+        id: 4,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        statusSince: NOW - 90 * M,
+      },
+    ]).needs.map((t) => t.id);
+    expect(order).toEqual([3, 2, 4, 1]);
+  });
+
   it('lists the longest wait first, and tickets with no known start after the dated ones', () => {
     const order = attentionTickets([
       { id: 5, status: 'waiting', awaitingInput: true },

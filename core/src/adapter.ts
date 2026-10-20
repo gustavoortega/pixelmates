@@ -2,11 +2,11 @@
  * Pluggable persistence backend for agent state and user settings.
  *
  * Today both VS Code and the standalone CLI use FileStateAdapter, which
- * persists everything under ~/.pixel-agents/ as plain JSON. The interface
+ * persists everything under ~/.pixelmates/ as plain JSON. The interface
  * exists so future hosts (JetBrains plugin, browser-only mock for tests)
  * can swap in alternate backends without touching the rest of the code.
  *
- * Layout persistence (~/.pixel-agents/layout.json) is NOT part of this
+ * Layout persistence (~/.pixelmates/layout.json) is NOT part of this
  * interface -- it's already host-agnostic (plain fs I/O in layoutPersistence.ts).
  */
 

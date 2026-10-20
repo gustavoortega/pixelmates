@@ -141,10 +141,14 @@ export interface AgentStatus {
   id: number;
   status: AgentActivityStatus;
   awaitingInput?: boolean;
+  awaitingReason?: AwaitingReason;
+  question?: string;
   since?: number;
 }
 
 export type AgentActivityStatus = 'active' | 'waiting' | 'idle';
+
+export type AwaitingReason = 'question' | 'idle';
 
 export interface AgentToolStart {
   type: 'agentToolStart';
@@ -497,6 +501,7 @@ export interface HooksConsentRequest {
   providerId: string;
   headline: string;
   disclosure: string;
+  replaceLegacyLabel?: string;
 }
 
 export interface ExternalAssetDirectoriesUpdated {
@@ -656,6 +661,7 @@ export interface HooksConsentResponse {
   type: 'hooksConsentResponse';
   providerId: string;
   choice: HooksConsentChoice;
+  replaceLegacy?: boolean;
 }
 
 export type HooksConsentChoice = 'install' | 'notNow' | 'never';

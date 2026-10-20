@@ -147,9 +147,9 @@ test.describe('Render loop', () => {
   test('an office where nothing moves redraws once a second @area:render', async ({ page }) => {
     // No agents, no pets, no furniture: nothing in it animates, by day or by night.
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-render-e2e-home-'));
-    fs.mkdirSync(path.join(home, '.pixel-agents'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.pixelmates'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.pixel-agents', 'layout.json'),
+      path.join(home, '.pixelmates', 'layout.json'),
       JSON.stringify(buildSeedLayout()),
     );
     const session = await launchStandalone(page, { homeDir: home });
@@ -264,9 +264,9 @@ test.describe('Render loop', () => {
   }) => {
     // One desk and its chair: an agent sits still at it, and nothing else in the room animates.
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-render-e2e-home-'));
-    fs.mkdirSync(path.join(home, '.pixel-agents'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.pixelmates'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.pixel-agents', 'layout.json'),
+      path.join(home, '.pixelmates', 'layout.json'),
       JSON.stringify({
         ...buildSeedLayout(),
         furniture: [

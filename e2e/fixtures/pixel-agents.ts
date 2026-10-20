@@ -15,7 +15,7 @@ import {
 } from '../helpers/test-narration';
 import { arrangeReviewLayout, getPixelAgentsFrame, openPixelAgentsPanel } from '../helpers/webview';
 
-const ATTACH_VIDEOS_ON_SUCCESS = process.env['PIXEL_AGENTS_E2E_ATTACH_VIDEOS_ON_SUCCESS'] === '1';
+const ATTACH_VIDEOS_ON_SUCCESS = process.env['PIXELMATES_E2E_ATTACH_VIDEOS_ON_SUCCESS'] === '1';
 
 export interface PixelAgentsContext {
   session: VSCodeSession;
@@ -66,9 +66,9 @@ function removeDirIfExists(dirPath: string | undefined): void {
 export const test = base.extend<{
   pixelAgents: PixelAgentsContext;
   _allureLabels: void;
-  /** Pre-seed `~/.pixel-agents/config.json` (e.g. areaMappings, showAreas). */
+  /** Pre-seed `~/.pixelmates/config.json` (e.g. areaMappings, showAreas). */
   seedConfig: unknown;
-  /** Pre-seed `~/.pixel-agents/layout.json` (must carry a high layoutRevision). */
+  /** Pre-seed `~/.pixelmates/layout.json` (must carry a high layoutRevision). */
   seedLayout: unknown;
   /** Pre-seed `~/.claude/settings.json` (e.g. an existing hook install). */
   seedClaudeSettings: unknown;
@@ -161,16 +161,16 @@ export const test = base.extend<{
         await attachTextFileIfExists(
           testInfo,
           'server-json',
-          path.join(tmpHome, '.pixel-agents', 'server.json'),
+          path.join(tmpHome, '.pixelmates', 'server.json'),
           'application/json',
         );
-        // Diagnostic: server-side hook/broadcast log (gated by PIXEL_AGENTS_DEBUG_LOG
+        // Diagnostic: server-side hook/broadcast log (gated by PIXELMATES_DEBUG_LOG
         // env var set in launchVSCode). Lets CI failure analysis see the exact
         // server-side event timeline without local repro.
         await attachTextFileIfExists(
           testInfo,
           'pixel-agents-debug-log',
-          path.join(tmpHome, '.pixel-agents', 'debug.log'),
+          path.join(tmpHome, '.pixelmates', 'debug.log'),
           'text/plain',
         );
         // Webview-side counterpart: every transport message the webview's

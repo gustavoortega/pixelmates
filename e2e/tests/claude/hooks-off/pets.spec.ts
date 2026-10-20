@@ -160,9 +160,9 @@ test.describe('Pets', () => {
     await expect(saveBtn).toBeVisible({ timeout: 5_000 });
     await saveBtn.click();
 
-    // The save round-trips through layoutPersistence to ~/.pixel-agents/layout.json
+    // The save round-trips through layoutPersistence to ~/.pixelmates/layout.json
     // (under the fixture's isolated HOME). Pets are opaque pass-through server-side.
-    const layoutPath = path.join(tmpHome, '.pixel-agents', 'layout.json');
+    const layoutPath = path.join(tmpHome, '.pixelmates', 'layout.json');
     await expect
       .poll(
         () => {
@@ -179,7 +179,7 @@ test.describe('Pets', () => {
         { timeout: 10_000 },
       )
       .toBe(2);
-    narrator.check('~/.pixel-agents/layout.json contains 2 pets');
+    narrator.check('~/.pixelmates/layout.json contains 2 pets');
 
     // Reload the panel (webview is disposed + re-resolved since there is no
     // retainContextWhenHidden) and confirm the pets rehydrate from disk.

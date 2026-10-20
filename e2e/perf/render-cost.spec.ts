@@ -58,7 +58,7 @@ for (const scene of SCENES) {
     await page.addInitScript(() => {
       const w = window as unknown as PerfWindow;
       // The e2e flag turns on the loop's counters; the wrappers count on any checkout.
-      (window as unknown as { __PIXEL_AGENTS_E2E?: boolean }).__PIXEL_AGENTS_E2E = true;
+      (window as unknown as { __PIXELMATES_E2E?: boolean }).__PIXELMATES_E2E = true;
       w.__perfDraws = 0;
       w.__perfRafs = 0;
       const raf = window.requestAnimationFrame.bind(window);

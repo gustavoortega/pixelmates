@@ -249,7 +249,7 @@ async function drainRecordedMessages(page: Page): Promise<RecordedServerMessage[
 /** The trailing `\s` is load-bearing: stdout arrives in chunks, and without a
  *  terminator a half-delivered line would match and yield a truncated URL that
  *  still parses (`http://127.0.0.1:501`). */
-const PRINTED_URL_PATTERN = /Pixel Agents server running at (\S+)\s/;
+const PRINTED_URL_PATTERN = /pixelmates server running at (\S+)\s/;
 
 /**
  * Wait for the URL line the CLI prints on its own stdout, and hand back exactly
@@ -259,7 +259,7 @@ const PRINTED_URL_PATTERN = /Pixel Agents server running at (\S+)\s/;
  * obtains the server token — the token is what makes the session privileged
  * enough to approve a hook install (the SPA forwards it on the /ws handshake,
  * server/src/httpServer.ts standaloneTokenValid). Reading the token out of
- * `~/.pixel-agents/server.json` and synthesizing an equivalent URL, which this
+ * `~/.pixelmates/server.json` and synthesizing an equivalent URL, which this
  * fixture used to do, is the fixture handing ITSELF a capability no browser can
  * reach: the whole standalone suite then stays green over a CLI that prints a
  * bare, wrong-tokened, or unbrowsable URL, and every real user lands in a
@@ -300,7 +300,7 @@ export async function launchStandalone(
   // asks over the tokened /ws handshake and the in-app dialog covers the
   // office in every spec. Only when the file does not exist yet — a shared
   // HOME (multi-server) was already seeded by the surface that owns it.
-  const configPath = path.join(tmpHome, '.pixel-agents', 'config.json');
+  const configPath = path.join(tmpHome, '.pixelmates', 'config.json');
   if ((options.seedHooksConsent ?? true) && !fs.existsSync(configPath)) {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({ hooksConsent: { claude: 'granted' } }, null, 2));
@@ -333,7 +333,7 @@ export async function launchStandalone(
     // Mark this as the e2e harness before navigation so the standalone webview
     // installs its test-only observability hooks (window.__pixelAgentsTestHooks).
     await page.addInitScript(() => {
-      (window as unknown as { __PIXEL_AGENTS_E2E?: boolean }).__PIXEL_AGENTS_E2E = true;
+      (window as unknown as { __PIXELMATES_E2E?: boolean }).__PIXELMATES_E2E = true;
     });
     await installMessageRecorder(page);
     await installFrameRequestCounter(page);

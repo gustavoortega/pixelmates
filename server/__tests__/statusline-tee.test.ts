@@ -87,9 +87,9 @@ async function closedPort(): Promise<number> {
   return port;
 }
 
-/** One live registry entry (~/.pixel-agents/servers/<pid>-<port>.json), the way a running server announces itself. */
+/** One live registry entry (~/.pixelmates/servers/<pid>-<port>.json), the way a running server announces itself. */
 function registerServer(port: number, token: string): void {
-  const dir = path.join(home, '.pixel-agents', 'servers');
+  const dir = path.join(home, '.pixelmates', 'servers');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
     path.join(dir, `${process.pid}-${port}.json`),

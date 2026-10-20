@@ -196,7 +196,7 @@ describe('clientMessageHandler: areas + carpet wire ordering', () => {
   describe('setHooksEnabled persistence', () => {
     /** Put our command on every installed event, as a real install would. */
     function seedInstalledHooks(): void {
-      const command = `node "${path.join(tempHome, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+      const command = `node "${path.join(tempHome, '.pixelmates', 'hooks', 'claude-hook.js')}"`;
       const entry = { matcher: '', hooks: [{ type: 'command', command, timeout: 5 }] };
       fs.mkdirSync(path.join(tempHome, '.claude'), { recursive: true });
       fs.writeFileSync(

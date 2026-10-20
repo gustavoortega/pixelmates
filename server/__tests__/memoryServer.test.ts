@@ -90,7 +90,7 @@ describe('memory MCP server over stdio', () => {
     expect(run.responses.map((r) => r['id'])).toEqual([1, 'two', 0]);
     const init = run.responses[0]['result'] as Record<string, unknown>;
     expect(init['protocolVersion']).toBe('2025-06-18');
-    expect(init['serverInfo']).toMatchObject({ name: 'pixel-agents-memory' });
+    expect(init['serverInfo']).toMatchObject({ name: 'pixelmates-memory' });
     const tools = (run.responses[1]['result'] as { tools: Array<{ name: string }> }).tools;
     expect(tools.map((t) => t.name).sort()).toEqual([
       'active_now',

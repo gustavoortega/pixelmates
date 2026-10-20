@@ -10,12 +10,14 @@
 
 import { WORKFLOW_PARENT_TOOL_ID_PREFIX } from '../../core/src/constants.js';
 import type { ServerMessage } from '../../core/src/messages.js';
-import { FX_POP_MS, NAP_AFTER_IDLE_SEC } from './constants.js';
+import { FX_POP_MS, NAP_AFTER_IDLE_SEC, TILE_SIZE } from './constants.js';
 import { fitView } from './office/camera.js';
 import { officeNow, overrideOfficeClock } from './office/clock.js';
 import { requestRedraw } from './office/engine/gameLoop.js';
+import { setSceneNapZzDrop } from './office/engine/renderer.js';
 import type { ActiveFx } from './office/fx/fxEngine.js';
-import { forceFullPlates } from './office/nameplate.js';
+import { setSceneStormScale } from './office/fx/fxRender.js';
+import { forceFullPlates, setSceneTextScale, setSceneTwoLinePlates } from './office/nameplate.js';
 import { IdlePose } from './office/types.js';
 
 /** Layout the scene loads instead of the bundled default, relative to the assets base. */
@@ -43,6 +45,8 @@ export const HERO_MINUTE = 30;
  */
 export const HERO_XP_POP_MS = Math.floor((FX_POP_MS * 5) / 6);
 const STAGE_TICK_MS = 250;
+/** The napper's Zz starts this far (world px) below its usual spot: its plate is lifted clear of the head. */
+const HERO_ZZ_DROP_PX = 9;
 /** Just under the storm's 20 s life, so the cloud is replaced before it starts to fade. */
 export const HERO_STORM_RESTART_MS = 17_000;
 /** Long enough for one frame to see the calm mood, which is what restarts the storm. */
@@ -51,14 +55,58 @@ const STORM_GAP_MS = 30;
 export interface HeroSceneOptions {
   /** `&hud=0` hides the HUD card. */
   hud: boolean;
+  /** `&hud=office` hides the clock, the bottom bar and the pills but keeps the rail and the sheet. */
+  hudOffice: boolean;
+  /** `&pops=0`: the scene fires no XP pop of its own; only a posted rosterEvent pops. */
+  pops: boolean;
+  /** `&freeze=1`: nobody wanders, the pet stays put, no toast and no connection pill. */
+  freeze: boolean;
+  /** `&text=1.25`: line 2 of the plate and the pop label grow by this factor (hero only); 1 when absent. */
+  text: number;
+  /** `&zoom=N`: a fixed integer zoom for the hero in place of the whole-room fit (the fit leaves a 4 px short of zoom 4 on 1100x620). */
+  zoom: number | null;
+  /** `&agents=1,2,3`: the monitor scene keeps only these agents (null: all seven). */
+  agents: number[] | null;
+  /** `&workflow=0`: the monitor scene's lead runs no workflow. */
+  workflow: boolean;
+  /** `&clock=HH:MM`: pins the scene's hour instead of the scene's own. */
+  clock: { hour: number; minute: number } | null;
+}
+
+/** The options every dev scene shares, read from the query string. */
+function parseSceneOptions(params: URLSearchParams): HeroSceneOptions {
+  const hud = params.get('hud');
+  const text = Number(params.get('text'));
+  const clock = /^(\d{1,2}):(\d{2})$/.exec(params.get('clock') ?? '');
+  const zoom = Number(params.get('zoom'));
+  const agents = (params.get('agents') ?? '')
+    .split(',')
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+  const hour = clock ? Number(clock[1]) : -1;
+  const minute = clock ? Number(clock[2]) : -1;
+  return {
+    hud: hud !== '0' && hud !== 'office',
+    hudOffice: hud === 'office',
+    pops: params.get('pops') !== '0',
+    freeze: params.get('freeze') === '1',
+    text: Number.isFinite(text) && text >= 1 && text <= 3 ? text : 1,
+    zoom: Number.isInteger(zoom) && zoom >= 1 && zoom <= 8 ? zoom : null,
+    agents: agents.length > 0 ? agents : null,
+    workflow: params.get('workflow') !== '0',
+    clock: hour >= 0 && hour < 24 && minute >= 0 && minute < 60 ? { hour, minute } : null,
+  };
 }
 
 /** `?scene=hero` on the dev SPA turns the scene on; anything else leaves the dev mock alone. */
 export function parseHeroScene(search: string): HeroSceneOptions | null {
   const params = new URLSearchParams(search);
   if (params.get('scene') !== 'hero') return null;
-  return { hud: params.get('hud') !== '0' };
+  return parseSceneOptions(params);
 }
+
+/** `&clock=HH:MM`: the hour a scene pins its light and its clock to, in place of its own. */
+export type SceneClockPin = { hour: number; minute: number };
 
 /** The tier numbers are the model tiers: 1 smallest to 4 largest (4 = crown and sparkles). */
 interface HeroAgent {
@@ -192,20 +240,23 @@ export function heroMessages(): ServerMessage[] {
 }
 
 /** 09:30 today; the seconds follow the real clock so lights and shimmer keep moving. */
-export function heroClock(realMs: number): Date {
+export function heroClock(realMs: number, pin?: SceneClockPin | null): Date {
   const d = new Date(realMs);
   return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate(),
-    HERO_HOUR,
-    HERO_MINUTE,
+    pin?.hour ?? HERO_HOUR,
+    pin?.minute ?? HERO_MINUTE,
     d.getSeconds(),
   );
 }
 
 /** The slice of OfficeState the stage touches. */
 export interface HeroOffice {
+  /** See OfficeState.frozen. */
+  frozen: boolean;
+  pets: { tileCol: number; tileRow: number; x: number; y: number }[];
   getLayout: () => { cols: number; rows: number };
   /** Pops are pushed here directly: the engine's per-agent cooldown would drop all but one in ten seconds. */
   fx: { active: ActiveFx[] };
@@ -215,6 +266,7 @@ export interface HeroOffice {
     hueShift: number,
     seatId: string,
     skipSpawnEffect: boolean,
+    folderName?: string,
   ) => void;
   characters: ReadonlyMap<number, { idleSec: number; pose: IdlePose }>;
   selectedAgentId: number | null;
@@ -223,6 +275,20 @@ export interface HeroOffice {
 /** Seat the four agents before their `agentCreated` arrives (the handler keeps an existing one). */
 export function seatHeroAgents(os: Pick<HeroOffice, 'addAgent'>): void {
   for (const a of HERO_AGENTS) os.addAgent(a.id, a.palette, 0, HERO_SEATS[a.id], true);
+}
+
+/** The tile the frozen cat sits on: the aisle between Alan's and Grace's desks. */
+export const HERO_CAT_TILE = { col: 12, row: 5 } as const;
+
+/** `&freeze=1`: the cat is parked on its tile, then nothing in the office wanders (OfficeState.frozen). */
+export function freezeHeroOffice(os: Pick<HeroOffice, 'frozen' | 'pets'>): void {
+  for (const pet of os.pets) {
+    pet.tileCol = HERO_CAT_TILE.col;
+    pet.tileRow = HERO_CAT_TILE.row;
+    pet.x = (HERO_CAT_TILE.col + 0.5) * TILE_SIZE;
+    pet.y = (HERO_CAT_TILE.row + 0.5) * TILE_SIZE;
+  }
+  os.frozen = true;
 }
 
 /**
@@ -234,9 +300,16 @@ export function startHeroStage(
   os: HeroOffice,
   dispatch: (msg: ServerMessage) => void,
   nowMs: () => number = Date.now,
+  opts: Pick<HeroSceneOptions, 'pops' | 'text' | 'clock'> = { pops: true, text: 1, clock: null },
 ): () => void {
-  overrideOfficeClock(() => heroClock(nowMs()));
+  overrideOfficeClock(() => heroClock(nowMs(), opts.clock));
   forceFullPlates(true);
+  setSceneTextScale(opts.text);
+  setSceneTwoLinePlates(opts.text > 1);
+  // The README framing is 880 px wide: the 5x4 cell cloud is drawn 3x so it reads there.
+  // The README framing has no storm: the cloud reads as a flame at 880 px (the lit desk says it).
+  setSceneStormScale(opts.text > 1 ? 0 : 1);
+  setSceneNapZzDrop(opts.text > 1 ? HERO_ZZ_DROP_PX : 0);
   const pop = (): void => {
     // One element per pop: the new one replaces the old one that is fading, never stacks over it.
     os.fx.active = os.fx.active.filter(
@@ -273,13 +346,18 @@ export function startHeroStage(
     stormGap = setTimeout(() => setMood('frustrated'), STORM_GAP_MS);
   };
   let stormGap: ReturnType<typeof setTimeout> | undefined;
-  pop();
+  // `&pops=0`: only the pops a take posts itself are shown.
+  if (opts.pops) pop();
   const stormTimer = setInterval(restorm, HERO_STORM_RESTART_MS);
-  const popTimer = setInterval(pop, HERO_XP_POP_MS);
+  const popTimer = opts.pops ? setInterval(pop, HERO_XP_POP_MS) : undefined;
   const holdTimer = setInterval(hold, STAGE_TICK_MS);
   return () => {
     clearInterval(popTimer);
     clearInterval(holdTimer);
+    setSceneTextScale(1);
+    setSceneTwoLinePlates(false);
+    setSceneStormScale(1);
+    setSceneNapZzDrop(0);
     clearInterval(stormTimer);
     clearTimeout(stormGap);
     overrideOfficeClock(null);
@@ -296,6 +374,14 @@ export function startHeroStage(
  * the scene's fixed clock, so the minutes read the same in every screenshot.
  */
 
+/** The model ids the monitor scene's agents report, by tier: made up but shaped like real ones. */
+const MONITOR_MODELS = {
+  1: 'claude-haiku-5',
+  2: 'claude-sonnet-5-5',
+  3: 'claude-opus-5-1',
+  4: 'claude-fable-5-1',
+} as const;
+
 export const MONITOR_HOUR = 15;
 export const MONITOR_MINUTE = 20;
 const MIN_MS = 60_000;
@@ -304,18 +390,18 @@ const MIN_MS = 60_000;
 export function parseMonitorScene(search: string): HeroSceneOptions | null {
   const params = new URLSearchParams(search);
   if (params.get('scene') !== 'monitor') return null;
-  return { hud: params.get('hud') !== '0' };
+  return parseSceneOptions(params);
 }
 
 /** 15:20 today; the seconds follow the real clock, like the hero scene's. */
-export function monitorClock(realMs: number): Date {
+export function monitorClock(realMs: number, pin?: SceneClockPin | null): Date {
   const d = new Date(realMs);
   return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate(),
-    MONITOR_HOUR,
-    MONITOR_MINUTE,
+    pin?.hour ?? MONITOR_HOUR,
+    pin?.minute ?? MONITOR_MINUTE,
     d.getSeconds(),
   );
 }
@@ -350,7 +436,7 @@ export const MONITOR_AGENTS: readonly MonitorAgent[] = [
   {
     id: 2,
     name: 'Alan',
-    folder: 'web-app',
+    folder: 'web-shop',
     branch: 'feat/date-picker',
     title: 'Pick a date library',
     tier: 2,
@@ -459,7 +545,7 @@ export function monitorHelperStart(msg: ServerMessage, baseMs: number): number |
  * What the scene sends after the layout loads, in the order the real server would, with every
  * time relative to `baseMs` (the scene's clock, on the minute).
  */
-export function monitorMessages(baseMs: number): ServerMessage[] {
+function allMonitorMessages(baseMs: number): ServerMessage[] {
   const ago = (min: number): number => baseMs - min * MIN_MS;
   const out: ServerMessage[] = [
     {
@@ -489,7 +575,7 @@ export function monitorMessages(baseMs: number): ServerMessage[] {
       palette: a.id - 1,
       hueShift: 0,
     });
-    out.push({ type: 'agentModel', id: a.id, model: `monitor-tier-${a.tier}`, tier: a.tier });
+    out.push({ type: 'agentModel', id: a.id, model: MONITOR_MODELS[a.tier], tier: a.tier });
     out.push({ type: 'agentSessionTitle', id: a.id, title: a.title });
     out.push({
       type: 'agentContextUsage',
@@ -529,8 +615,15 @@ export function monitorMessages(baseMs: number): ServerMessage[] {
   out.push({ type: 'agentStatus', id: 1, status: 'active', since: ago(31) });
   out.push({ type: 'agentToolPermission', id: 1, permissionSince: ago(12) });
 
-  // Alan: stopped on a question, 4 minutes.
-  out.push({ type: 'agentStatus', id: 2, status: 'waiting', awaitingInput: true, since: ago(4) });
+  // Alan: reading at his desk with no question yet (the README capture posts the question).
+  out.push({
+    type: 'agentToolStart',
+    id: 2,
+    toolId: 'monitor-2-read',
+    status: 'Reading date-picker.md',
+    toolName: 'Read',
+  });
+  out.push({ type: 'agentStatus', id: 2, status: 'active', since: ago(3) });
 
   // Grace: the same tests failing four runs in a row.
   out.push({
@@ -663,16 +756,75 @@ export function monitorMessages(baseMs: number): ServerMessage[] {
 }
 
 /**
+ * The monitor scene's messages. `&agents=1,2,3,4` keeps only those agents and `&workflow=0` drops
+ * the lead's workflow run (it plays a plain tool instead): the README's ticket capture needs a
+ * quiet office with no crew banner and no tag at its crop edge.
+ */
+export function monitorMessages(
+  baseMs: number,
+  opts: Pick<HeroSceneOptions, 'agents' | 'workflow'> = { agents: null, workflow: true },
+): ServerMessage[] {
+  const all = allMonitorMessages(baseMs);
+  if (!opts.agents && opts.workflow) return all;
+  const lead = MONITOR_WORKFLOW.leadId;
+  const out = all.filter((m) => {
+    const id = (m as { id?: unknown }).id;
+    if (opts.agents && typeof id === 'number' && !opts.agents.includes(id)) return false;
+    if (opts.workflow || id !== lead) return true;
+    const toolId = (m as { toolId?: unknown }).toolId;
+    return !(
+      m.type === 'subagentPresent' ||
+      m.type === 'subagentToolStart' ||
+      m.type === 'workflowRun' ||
+      toolId === 'monitor-4-workflow'
+    );
+  });
+  if (!opts.workflow && (!opts.agents || opts.agents.includes(lead))) {
+    out.push({
+      type: 'agentToolStart',
+      id: lead,
+      toolId: 'monitor-4-lint',
+      status: 'Running: npm run lint',
+      toolName: 'Bash',
+    });
+  }
+  return out;
+}
+
+/** The slice of OfficeState that seats Alan. */
+export interface MonitorSeating {
+  seats: ReadonlyMap<string, { seatCol: number; seatRow: number }>;
+  seatZone: (uid: string) => string | null;
+  addAgent: HeroOffice['addAgent'];
+}
+
+/**
+ * Alan sits at the first STUDIO desk (top row, leftmost chair), where the README's ticket beat
+ * lights him up. Seated before his `agentCreated` arrives, like the hero's four.
+ */
+export function seatMonitorAlan(os: MonitorSeating): void {
+  const alan = MONITOR_AGENTS.find((a) => a.name === 'Alan');
+  if (!alan) return;
+  const first = [...os.seats]
+    .filter(([uid]) => os.seatZone(uid) === 'Studio')
+    .sort(([, a], [, b]) => a.seatRow - b.seatRow || a.seatCol - b.seatCol)[0];
+  if (first) os.addAgent(alan.id, alan.id - 1, 0, first[0], true, alan.folder);
+}
+
+/**
  * Pins the scene's clock and returns the minute it starts on (what the messages are relative to),
  * a function that runs `fn` with the office clock held at `ms` (a helper's spawn, stamped by the
  * page from that clock) and a function that restores the real clock.
  */
-export function startMonitorStage(nowMs: () => number = Date.now): {
+export function startMonitorStage(
+  nowMs: () => number = Date.now,
+  pin: SceneClockPin | null = null,
+): {
   baseMs: number;
   at: (ms: number, fn: () => void) => void;
   stop: () => void;
 } {
-  const clock = (): Date => monitorClock(nowMs());
+  const clock = (): Date => monitorClock(nowMs(), pin);
   overrideOfficeClock(clock);
   const start = officeNow();
   start.setSeconds(0, 0);

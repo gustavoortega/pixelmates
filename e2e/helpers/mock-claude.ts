@@ -262,7 +262,7 @@ export async function waitForClaudeHookSetup(tmpHome: string): Promise<void> {
   await waitForHookServer(tmpHome);
 
   const settingsPath = path.join(tmpHome, '.claude', 'settings.json');
-  const hookScriptPath = path.join(tmpHome, '.pixel-agents', 'hooks', 'claude-hook.js');
+  const hookScriptPath = path.join(tmpHome, '.pixelmates', 'hooks', 'claude-hook.js');
   const deadline = Date.now() + HOOK_SETUP_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
@@ -354,9 +354,9 @@ export async function spawnExternalClaudeScenario(options: {
   const env = {
     ...applyMockHomeEnv(process.env, options.tmpHome),
     PATH: `${path.dirname(claudeBinary)}${path.delimiter}${process.env['PATH'] ?? ''}`,
-    PIXEL_AGENTS_NODE_BIN: process.execPath,
+    PIXELMATES_NODE_BIN: process.execPath,
     // Switches the runner's narration to the magenta [external·tag] style.
-    PIXEL_AGENTS_MOCK_EXTERNAL: '1',
+    PIXELMATES_MOCK_EXTERNAL: '1',
   };
 
   // Pipe stderr so we can surface diagnostics on timeout. stdout (the mock's

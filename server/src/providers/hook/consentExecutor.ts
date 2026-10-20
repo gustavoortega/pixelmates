@@ -5,6 +5,7 @@
  * error modal, standalone logs), so they supply `ConsentEffects` and share the ORDER of the writes.
  */
 
+import type { HookInstallOptions } from '../../../../core/src/provider.js';
 import {
   clearHooksAnswer,
   clearHooksConsent,
@@ -23,7 +24,7 @@ export interface ConsentEffects {
   /** The full Settings-toggle path: install or uninstall, then persist the
    *  provider's preference only when the resulting on-disk state agrees, then
    *  report it. */
-  setHooksEnabled(enabled: boolean): Promise<void>;
+  setHooksEnabled(enabled: boolean, options?: HookInstallOptions): Promise<void>;
   /** Uninstall WITHOUT touching the persisted preference. */
   uninstallHooks(): Promise<void>;
   /** Read the on-disk truth. May reject (an unreadable settings file) — the
@@ -58,13 +59,14 @@ export function applyConsentChoice(
   providerId: string,
   choice: unknown,
   effects: ConsentEffects,
+  options: HookInstallOptions = {},
 ): Promise<void> {
   const next = consentQueue.then(() =>
-    runConsentChoice(providerId, choice, effects).catch((err: unknown) => {
+    runConsentChoice(providerId, choice, effects, options).catch((err: unknown) => {
       // Backstop, not a handler: every effect surfaces its own failure and resolves, so nothing should reach this
       // catch. It exists because the returned promise is fire-and-forget — an escaping rejection would surface only
       // as an unhandled-rejection crash log, and one broken effect must not block every later answer in the queue.
-      console.error('[Pixel Agents] Consent action failed:', err);
+      console.error('[pixelmates] Consent action failed:', err);
     }),
   );
   consentQueue = next;
@@ -75,6 +77,7 @@ async function runConsentChoice(
   providerId: string,
   choice: unknown,
   effects: ConsentEffects,
+  options: HookInstallOptions,
 ): Promise<void> {
   // Fail closed: an unreadable settings file reads as "nothing of ours is
   // installed", which maps every choice to its no-file-touch variant. We never
@@ -94,7 +97,8 @@ async function runConsentChoice(
       // re-derive the on-disk state before persisting the preference.
       // Reimplementing the grant here would drop that last step. An earlier
       // decline is replaced by that path's grant.
-      await effects.setHooksEnabled(true);
+      // `options` rides only this arm: the checkbox is about what Install writes.
+      await effects.setHooksEnabled(true, options);
       break;
 
     case 'disable':
@@ -121,8 +125,8 @@ async function runConsentChoice(
         }
         console.log(
           preferenceRaised
-            ? '[Pixel Agents] Install undone; the setting is back to its default.'
-            : '[Pixel Agents] Hook install undone — you will be asked again next time.',
+            ? '[pixelmates] Install undone; the setting is back to its default.'
+            : '[pixelmates] Hook install undone — you will be asked again next time.',
         );
       } else {
         // Nothing on disk: the grant is all that answer left (an Install recorded, then failed to write). Nothing to
@@ -130,8 +134,8 @@ async function runConsentChoice(
         clearRecord();
         console.log(
           preferenceRaised
-            ? '[Pixel Agents] Approval withdrawn; the setting is back to its default.'
-            : '[Pixel Agents] Hook approval withdrawn — you will be asked again next time.',
+            ? '[pixelmates] Approval withdrawn; the setting is back to its default.'
+            : '[pixelmates] Hook approval withdrawn — you will be asked again next time.',
         );
       }
       await effects.reportHooksStatus();
@@ -153,8 +157,8 @@ async function runConsentChoice(
       clearHooksAnswer(providerId);
       console.log(
         consent === 'declined'
-          ? '[Pixel Agents] Hook decline withdrawn — you will be asked again next time.'
-          : '[Pixel Agents] Install not approved; the setting is back to its default.',
+          ? '[pixelmates] Hook decline withdrawn — you will be asked again next time.'
+          : '[pixelmates] Install not approved; the setting is back to its default.',
       );
       await effects.reportHooksStatus();
       break;
@@ -166,7 +170,7 @@ async function runConsentChoice(
       // covers consent + preference; the effect only mirrors it into live runtime state.
       recordHooksDecline(providerId);
       effects.syncHooksPreferenceOff();
-      console.log('[Pixel Agents] Hooks disabled. Re-enable them any time in the UI settings.');
+      console.log('[pixelmates] Hooks disabled. Re-enable them any time in the UI settings.');
       await effects.reportHooksStatus();
       break;
 
@@ -174,7 +178,7 @@ async function runConsentChoice(
       // Writes nothing; the ask fires again on the next webviewReady. Reached by a first "Not Now" (nothing to undo)
       // and by every junk value, which is why the line claims no more than that nothing was installed.
       console.log(
-        '[Pixel Agents] Skipping hook install for this run — you will be asked again next time.',
+        '[pixelmates] Skipping hook install for this run — you will be asked again next time.',
       );
       break;
   }

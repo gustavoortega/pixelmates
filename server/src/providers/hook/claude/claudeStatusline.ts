@@ -1,11 +1,16 @@
-import type { HookProvider } from '../../../../../core/src/provider.js';
+import type { HookInstallOptions, HookProvider } from '../../../../../core/src/provider.js';
 import {
+  hasUpstreamStatusline,
   installStatusline,
   isStatuslineInstalled,
   STATUSLINE_UNSUPPORTED_PLATFORM,
   uninstallStatusline,
 } from './claudeStatuslineInstaller.js';
-import { STATUSLINE_CONSENT_DISCLOSURE, STATUSLINE_CONSENT_HEADLINE } from './consentCopy.js';
+import {
+  LEGACY_REPLACE_LABEL,
+  STATUSLINE_CONSENT_DISCLOSURE,
+  STATUSLINE_CONSENT_HEADLINE,
+} from './consentCopy.js';
 
 /**
  * Claude Code's status line wrapper as a second provider. It installs no hooks: its "install" chains
@@ -27,14 +32,19 @@ export const claudeStatuslineProvider: HookProvider = {
   // No hook events: the wrapper posts to its own route, never /api/hooks.
   normalizeHookEvent: () => null,
 
-  async installHooks(): Promise<void> {
+  async installHooks(
+    _serverUrl: string,
+    _authToken: string,
+    options?: HookInstallOptions,
+  ): Promise<void> {
     // The wrapper runs the original command through `sh`, so the install would
     // break a cmd.exe status line. Refuse before anything is written.
     if (process.platform === 'win32') throw new Error(STATUSLINE_UNSUPPORTED_PLATFORM);
-    await installStatusline();
+    await installStatusline(options);
   },
   uninstallHooks: () => uninstallStatusline(),
   areHooksInstalled: () => Promise.resolve(isStatuslineInstalled()),
+  legacyReplaceLabel: () => (hasUpstreamStatusline() ? LEGACY_REPLACE_LABEL : null),
   consentDisclosure: () => ({
     headline: STATUSLINE_CONSENT_HEADLINE,
     disclosure: STATUSLINE_CONSENT_DISCLOSURE,

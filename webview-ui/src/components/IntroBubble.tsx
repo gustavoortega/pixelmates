@@ -15,6 +15,7 @@ import type { OfficeState } from '../office/engine/officeState.js';
 import { DiscordIcon } from './ChangelogModal.js';
 import { computeIntroBubbleGeometry } from './introBubbleGeometry.js';
 import { Button } from './ui/Button.js';
+import { Checkbox } from './ui/Checkbox.js';
 
 interface IntroBubbleProps {
   officeState: OfficeState;
@@ -25,6 +26,9 @@ interface IntroBubbleProps {
    *  terms, only orientation. */
   headline: string;
   disclosure: string;
+  /** Set only when the server found the other app's (Pixel Agents) entries in the same settings: the consent step
+   *  then shows this as a second checkbox, off by default. Server copy like the disclosure, for the same reason. */
+  replaceLegacyLabel?: string;
   containerRef: React.RefObject<HTMLDivElement | null>;
   zoom: number;
   panRef: React.RefObject<{ x: number; y: number }>;
@@ -44,7 +48,7 @@ interface IntroBubbleProps {
   /** A consent-step button click: sends the choice to the server and the tour
    *  moves on. Does NOT close the tour — the caller must keep this component
    *  mounted after a choice so the closing step can show. */
-  onChoice: (choice: ConsentChoice) => void;
+  onChoice: (choice: ConsentChoice, replaceLegacy?: boolean) => void;
   /** Every way the tour ends: the X, Escape, or Let's Go. Sends NOTHING by
    *  itself — an unanswered consent step changes nothing and the whole Intro
    *  returns the next time the office is opened. */
@@ -99,6 +103,7 @@ export function IntroBubble({
   officeState,
   headline,
   disclosure,
+  replaceLegacyLabel,
   containerRef,
   zoom,
   panRef,
@@ -111,6 +116,8 @@ export function IntroBubble({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const [step, setStep] = useState(WELCOME_STEP);
+  // Off until ticked, and reset by nothing: the choice is made on this one step.
+  const [replaceLegacy, setReplaceLegacy] = useState(false);
 
   // The greeter lives exactly as long as this component.
   useEffect(() => {
@@ -209,7 +216,8 @@ export function IntroBubble({
   const back = (): void => setStep((s) => Math.max(WELCOME_STEP, s - 1));
   const forward = (): void => setStep((s) => Math.min(CLOSING_STEP, s + 1));
   const choose = (choice: ConsentChoice): void => {
-    onChoice(choice);
+    // Only a box this ask actually showed can have been ticked.
+    onChoice(choice, replaceLegacyLabel !== undefined && replaceLegacy);
     // A decline has no outcome to wait on, so it advances immediately. An
     // install holds this step (buttons disabled via installPending) and
     // advances when its verdict arrives — the pending-fall effect above.
@@ -217,7 +225,7 @@ export function IntroBubble({
   };
 
   const titles = [
-    'Welcome to Pixel Agents!',
+    'Welcome to pixelmates!',
     'Powered by Claude Code',
     headline,
     installFailed ? "Hooks couldn't be installed" : "You're all set!",
@@ -317,6 +325,15 @@ export function IntroBubble({
               {paragraph}
             </p>
           ))}
+
+        {step === CONSENT_STEP && replaceLegacyLabel !== undefined && (
+          <Checkbox
+            label={replaceLegacyLabel}
+            checked={replaceLegacy}
+            onChange={() => setReplaceLegacy((v) => !v)}
+            className="text-sm mb-8"
+          />
+        )}
 
         {step === CLOSING_STEP && (
           <>

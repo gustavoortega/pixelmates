@@ -1,5 +1,5 @@
 /**
- * Builders for seeded `~/.pixel-agents/{layout,config}.json`, passed to the
+ * Builders for seeded `~/.pixelmates/{layout,config}.json`, passed to the
  * pixelAgents fixture via `test.use({ seedLayout, seedConfig })`. The fixture
  * writes them under the isolated HOME BEFORE VS Code launches (see
  * e2e/helpers/launch.ts), so the server reads them on startup.

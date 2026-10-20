@@ -181,7 +181,7 @@ function endScan(job: ScanJob, history: ReturnType<typeof newFacts>, complete: b
     tracker.scanning = false;
     if (!complete) {
       // Counts only: what the file holds never reaches the log.
-      console.log(`[Pixel Agents] Agent ${agentId}: history scan stopped early`);
+      console.log(`[pixelmates] Agent ${agentId}: history scan stopped early`);
     }
     try {
       publishMonitor(agentId, agent, agents, tracker);

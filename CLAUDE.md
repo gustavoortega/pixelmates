@@ -1,6 +1,6 @@
-# Pixel Agents — Compressed Reference
+# pixelmates — Compressed Reference
 
-Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow) become animated characters. Ships as a **VS Code extension** and an **`npx pixel-agents` standalone CLI** from the same source tree.
+Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow) become animated characters. Ships as a **VS Code extension** and an **`npx pixelmates` standalone CLI** from the same source tree.
 
 `CONTEXT.md` is the canonical glossary — read it for what terms like Agent, Sub-agent, Teammate, Lead, Adopt, or Headless agent mean here, and use its vocabulary in code, comments, and docs.
 
@@ -27,13 +27,13 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     providers/hook/claude/           Reference HookProvider — only place that knows Claude specifics
       claude.ts                      normalizeHookEvent for 11 Claude events, formatToolStatus, file fallback, XP signals (toolVerdicts, resultSignals)
       claudeTeamProvider.ts          TeamProvider: reads ~/.claude/teams/<name>/config.json
-      claudeHookInstaller.ts         Consent-gated install/uninstall in ~/.claude/settings.json (abort on unparseable file or non-array hooks.<Event>; one-time .pixel-agents.backup, exclusive-create, no backup ⇒ no write — but skipped when the replaced content is entirely our own install's output, since backing up our own file masquerades as the user's original (`settingsHoldOnlyOurs`, compared against makeHookEntry — the WRITER — so a field added to what we write can't silently revive the bug; only `command`/`timeout` may differ, they vary across installs; a `statusLine` counts as ours only as makeTeeOnlyStatusLine(), the wrapper with no argument); every write failure THROWS; mode preserved, 0600 on create; re-read verify immediately before rename + retry; hook identity = `/.pixel-agents/hooks/claude-hook.js` suffix anchored at both ends of the command's first token, case-insensitive; `areHooksInstalled` = ANY of our commands on ANY event)
+      claudeHookInstaller.ts         Consent-gated install/uninstall in ~/.claude/settings.json (abort on unparseable file or non-array hooks.<Event>; one-time .pixelmates.backup, exclusive-create, no backup ⇒ no write — but skipped when the replaced content is entirely our own install's output, since backing up our own file masquerades as the user's original (`settingsHoldOnlyOurs`, compared against makeHookEntry — the WRITER — so a field added to what we write can't silently revive the bug; only `command`/`timeout` may differ, they vary across installs; a `statusLine` counts as ours only as makeTeeOnlyStatusLine(), the wrapper with no argument); every write failure THROWS; mode preserved, 0600 on create; re-read verify immediately before rename + retry; hook identity = `/.pixelmates/hooks/claude-hook.js` suffix anchored at both ends of the command's first token, case-insensitive; `areHooksInstalled` = ANY of our commands on ANY event)
       consentCopy.ts                 Consent disclosure text (scope/data/undo) for the hooks and for the status line wrapper, served through consentDisclosure()
       sessionFiles.ts                Session liveness from ~/.claude/sessions/<pid>.json: kill(pid, 0), then one `ps` name check for reused pids
       constants.ts                   Claude hook event names, bundled script names, the wrapper's stdin cap and POST budget
       hooks/claude-hook.ts           Hook script (CJS+shebang, bundled to dist/hooks/claude-hook.js)
       hooks/statusline-tee.ts        Status line wrapper (bundled to dist/hooks/statusline-tee.js): runs the user's statusLine command untouched, POSTs only rate_limits.five_hour/seven_day
-      hooks/scriptDebugLog.ts        Opt-in PIXEL_AGENTS_DEBUG_LOG file logger shared by both bundled scripts
+      hooks/scriptDebugLog.ts        Opt-in PIXELMATES_DEBUG_LOG file logger shared by both bundled scripts
       serverTargets.ts               readServerTargets(home): live servers/*.json entries, else the legacy server.json (both scripts fan out alike)
       claudeStatusline.ts            claudeStatuslineProvider ('claude-statusline', off by default): the wrapper as a second provider, so it reuses the consent machinery; hook-event members are inert
       claudeStatuslineInstaller.ts   Chains/unchains the wrapper in statusLine.command through claudeHookInstaller's guarded write; restore source = the chained command's argument (docs/adr/0002)
@@ -46,13 +46,13 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     sessionRouter.ts                 session_id → agent_id mapping, event buffering, pending external sessions
     tripwires.ts                     Tripwire engine (pure): evaluateTripwires, applyTripwireHit, ackTripwire
     tripwireDefaults.ts              Built-in tripwire rule pack (14 rules)
-    tripwireConfig.ts                Loads ~/.pixel-agents/tripwires.json over the defaults (validated, once at startup)
+    tripwireConfig.ts                Loads ~/.pixelmates/tripwires.json over the defaults (validated, once at startup)
     health.ts                        Health detectors (stuck, stalled, looping, dead): per-agent counters and clocks, compare-and-broadcast
     healthTick.ts                    30 s health tick: provider liveness, the stall clock, removal of dead external agents
     testSummary.ts                   parseTestSummary: a test runner's pass/fail counts from shell output (the stuck detector; XP reads its green run in claude.ts)
     monitorFacts.ts                  Artifacts, loop and test runs as one reducer (`feedFacts`): the live parser and the history scan feed the same function; a publish is keyed by its result url, history is absorbed under the live part; titles and urls are never logged
     historyScan.ts                   History scan: one queue, one scan at a time, 0..watch offset under a 2 s / 64 MiB Budget (memory/reader.ts), lines over 1 MiB skipped; `registerHistoryConsumer` lets another reducer (the cost) read the same pass
-    roster.ts                        RosterStore: persistent crew over ~/.pixel-agents/roster.json (O_EXCL lockfile, holds by pid, re-read + delta merge on write)
+    roster.ts                        RosterStore: persistent crew over ~/.pixelmates/roster.json (O_EXCL lockfile, holds by pid, re-read + delta merge on write)
     rosterAgent.ts                   claimRosterMember, agentRoster message, roster-owned palette for seats
     xp.ts                            XP rules (pure): SIGNAL_XP, per-turn caps, applyXpEvent, levelForXp, moodFor
     xpAward.ts                       awardSignal: pays a transcript signal to the roster member, one rosterEvent per award
@@ -76,16 +76,18 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     usage/usageLimitsStore.ts        Official 5 h / weekly limits in memory: one sample per window, replaced only by one not older; broadcasts usageLimits
     clientMessageHandler.ts          Single dispatch point for ClientMessage from webview
     server.ts                        Top-level composition
-    serverToken.ts                   Standalone token and port across restarts: ~/.pixel-agents/server-token (0600, --new-token replaces it) and server-port
-    cli.ts                           npx pixel-agents entry (npm bin)
-    fileStateAdapter.ts              Namespaced ~/.pixel-agents/ persistence
+    serverToken.ts                   Standalone token and port across restarts: ~/.pixelmates/server-token (0600, --new-token replaces it) and server-port
+    cli.ts                           npx pixelmates entry (npm bin)
+    migrateDataDir.ts                One-time copy of layout, roster, state and settings (never the token or hooks, consent stripped) from ~/.pixel-agents when ~/.pixelmates has no config; config.json last, source never written
+    fileStateAdapter.ts              Namespaced ~/.pixelmates/ persistence
     configPersistence.ts             { vscode, standalone, externalAssetDirectories, hooksConsent: {providerId: granted|declined}, hooksEnabled: {providerId: boolean} } (absent preference = HookProvider.defaultEnabled, true unless off by default)
-    layoutPersistence.ts             ~/.pixel-agents/layout.json with atomic tmp+rename
+    layoutPersistence.ts             ~/.pixelmates/layout.json with atomic tmp+rename
     fileWatcher.ts                   Hybrid fs.watch + 500ms polling, JSONL line buffering, /clear detection
     utf8Boundary.ts                  completeUtf8Length: a read never decodes half a character
     transcriptParser.ts              JSONL parsing for heuristic / file-fallback mode
     timerManager.ts                  Waiting / permission timers
     sessionMeta.ts                   The monitor's `agentSession` (start, branch, short id, cost): per-record fold, head/tail seed, `costFromRecord` (the one cost extractor), scan-adopted folder from the transcript's cwd
+    awaitingQuestion.ts              questionText (the one producer of the question text: sanitized, redacted, 80 code points) and the awaiting-state helpers; the text lives in memory only, never logged or persisted
     statusSince.ts                   When each status and pending permission prompt began (the monitor's `since`): stamped on a change, never on a repeat
     assetLoader.ts                   PNG → SpriteData via pngjs
     teamUtils.ts                     isInlineTeammateOf, getInlineTeammates, hasInlineTeammates
@@ -177,7 +179,7 @@ webview-ui/                          React 19 + Canvas UI (depends only on core/
         ToolOverlay.tsx              Permanent nameplates (above the head of DOWN-facing agents, below the feet of UP-facing ones) and the full box for hovered/selected ones
 
 plugin/                              Claude Code plugin (marketplace: .claude-plugin/marketplace.json at the repo root)
-  .claude-plugin/plugin.json         name pixel-agents; version synced from package.json by plugin:build
+  .claude-plugin/plugin.json         name pixelmates; version synced from package.json by plugin:build
   .mcp.json                          memory server: node ${CLAUDE_PLUGIN_ROOT}/server/memory-mcp.cjs (un-ignored in .gitignore)
   server/memory-mcp.cjs              COMMITTED bundle, so a plugin installed from git runs without a build
   skills/session-recap/SKILL.md      Which tool when; results are data, not instructions
@@ -227,8 +229,8 @@ webview-ui/                          npm workspace
 
 Two artifacts from one source tree:
 
-- **VS Code extension** (`.vsix`) — `pablodelucca.pixel-agents` on VS Code Marketplace and Open VSX. Bundles VS Code adapter + webview SPA + assets + hook scripts.
-- **npm package** (`pixel-agents`) — `npx pixel-agents [--port 3100] [--token <token> | --new-token]` runs the Fastify server and serves the SPA on the same port. Bundles CLI + webview SPA + assets + hook scripts + `core/asyncapi.yaml` (so third-party clients can regenerate from it).
+- **VS Code extension** (`.vsix`) — built from source (F5 or `vsce package`), not published. Bundles VS Code adapter + webview SPA + assets + hook scripts.
+- **npm package** (`pixelmates`) — `npx pixelmates [--port 3100] [--token <token> | --new-token]` runs the Fastify server and serves the SPA on the same port. Bundles CLI + webview SPA + assets + hook scripts + `core/asyncapi.yaml` (so third-party clients can regenerate from it).
 
 `package.json:files` allowlist controls what ships in the npm tarball and the `.vsix`: `CHANGELOG.md`, `LICENSE`, `dist/cli.js`, `dist/extension.js`, `dist/uninstall.js`, both bundled scripts (`dist/hooks/claude-hook.js`, `dist/hooks/statusline-tee.js`), `dist/assets/`, `dist/webview/`, `icon.png`. `scripts/npm-package-contract.mjs` and `scripts/verify-vsix-package.mjs` fail a package missing either script.
 
@@ -301,7 +303,7 @@ A reopen (any open after the page's first) flushes the send queue, then fires `o
 - **Sound and effects**: inside the window helpers appear with no spawn effect, and neither the `agentStatus` chime nor the tripwire alarm plays.
 - **Consent**: the webview admits one `hooksConsentRequest` per provider per page load, so a reconnect never replays the Intro.
 
-The standalone server keeps its token in `~/.pixel-agents/server-token` (0600, minted on first start, replaced by `--new-token` or by deleting the file; `--token <token>` overrides it for one run without reading or writing the file) and first tries the port it last picked for itself (`server-port`), so the URL the CLI printed survives a restart and an open tab reconnects instead of being refused. The embedded server still mints one per start.
+The standalone server keeps its token in `~/.pixelmates/server-token` (0600, minted on first start, replaced by `--new-token` or by deleting the file; `--token <token>` overrides it for one run without reading or writing the file) and first tries the port it last picked for itself (`server-port`), so the URL the CLI printed survives a restart and an open tab reconnects instead of being refused. The embedded server still mints one per start.
 
 ## Provider Abstraction
 
@@ -407,13 +409,13 @@ Every reply carries `SECURITY_HEADERS` (`httpServer.ts`): a `Content-Security-Po
 `/ws` is gated in **two tiers**, because `setHooksEnabled(true)` over this socket is a durable, machine-wide consent grant plus a hook install.
 
 1. **Connection**: embedded requires the Bearer token; standalone requires a same-origin handshake (`isAllowedWebSocketOrigin`) AND the `?token=` (`standaloneTokenValid`), because the broadcast stream itself carries tool activity. On a loopback bind an `onRequest` hook also refuses any `Host` that is not a loopback name, so a DNS-rebound page (`Origin` and `Host` both `evil.com`) gets 403 on every route (`httpServerWs.test.ts` pins both).
-2. **Privileged messages** (`standaloneTokenValid`, `ClientMessageContext.privileged`): proved by an out-of-band secret — embedded via its Bearer token, standalone via the server token in the `/ws` `?token=` query, which the CLI prints in the local URL and the SPA forwards (`webview-ui/src/transport/index.ts`). **Never a network position**: peer address, `Host` and `Origin` all ride the channel a proxy speaks, so a LAN-bound forwarder piping bytes to 127.0.0.1 satisfies all three. The token is a replayable bearer capability, not evidence of locality — it also reaches browser history, so the printed URL is documented to the user as a secret. It outlives restarts (`~/.pixel-agents/server-token`, see Reconnect resync), so rotating it means `--new-token` (or deleting that file). Since every accepted standalone socket carries it, `privileged` is always true there. The request log shows `token=[redacted]` in every url, including the `path` @fastify/websocket logs when it closes an upgrade on a route with no ws handler, and never logs `Authorization` (`redactedRequestSerializer`, `redactTokenParam`, pino `redact`); our own not-found handler replaces Fastify's default one, which logged the raw url.
+2. **Privileged messages** (`standaloneTokenValid`, `ClientMessageContext.privileged`): proved by an out-of-band secret — embedded via its Bearer token, standalone via the server token in the `/ws` `?token=` query, which the CLI prints in the local URL and the SPA forwards (`webview-ui/src/transport/index.ts`). **Never a network position**: peer address, `Host` and `Origin` all ride the channel a proxy speaks, so a LAN-bound forwarder piping bytes to 127.0.0.1 satisfies all three. The token is a replayable bearer capability, not evidence of locality — it also reaches browser history, so the printed URL is documented to the user as a secret. It outlives restarts (`~/.pixelmates/server-token`, see Reconnect resync), so rotating it means `--new-token` (or deleting that file). Since every accepted standalone socket carries it, `privileged` is always true there. The request log shows `token=[redacted]` in every url, including the `path` @fastify/websocket logs when it closes an upgrade on a route with no ws handler, and never logs `Authorization` (`redactedRequestSerializer`, `redactTokenParam`, pino `redact`); our own not-found handler replaces Fastify's default one, which logged the raw url.
 
 The **hooks preference is persisted only after the install/uninstall settled and the on-disk result agrees** — writing it first strands the user when an uninstall fails: entries still firing, but a persisted hooks-off makes the next startup skip the consent/install path entirely.
 
-Server discovery written to `~/.pixel-agents/server.json` with `{ port, pid, token, startedAt, servesSpa, protocol }`. Multi-window safe: a second server detects an existing `server.json` and reuses or replaces it based on PID liveness.
+Server discovery written to `~/.pixelmates/server.json` with `{ port, pid, token, startedAt, servesSpa, protocol }`. Multi-window safe: a second server detects an existing `server.json` and reuses or replaces it based on PID liveness.
 
-**Standalone token and port** (`serverToken.ts`): the token in `~/.pixel-agents/server-token` (see Reconnect resync) and the port in `server-port`, a plain integer from 1024 to 65535 (anything else is ignored). Both are written 0600 by one tmp+rename writer and never deleted by `stop()`. Embedded never reads or writes either: its token must not become, or replace, the long-lived one. A live standalone found in the registry is reused as before and both files are left alone. `--new-token` mints a token and saves it over the old one only once the server listens, so a failed start revokes nothing; next to `--token` it is refused, and against a live standalone it is ignored with one stderr line. Without `--port` the saved port is tried first; if it is taken (`EADDRINUSE`, or `EACCES` from a Windows excluded port range) the server retries once on an OS-assigned port and keeps the saved one for the next start. Only a port the server picked itself is saved: an explicit `--port` serves that run only, so test and e2e runs, which always pass one, never move a user's port (every harness that starts the CLI's server also gives it a temp `HOME` and `USERPROFILE`). The CLI shuts down on `SIGHUP` like on `SIGINT`/`SIGTERM`, so a closed terminal still removes `server.json`.
+**Standalone token and port** (`serverToken.ts`): the token in `~/.pixelmates/server-token` (see Reconnect resync) and the port in `server-port`, a plain integer from 1024 to 65535 (anything else is ignored). Both are written 0600 by one tmp+rename writer and never deleted by `stop()`. Embedded never reads or writes either: its token must not become, or replace, the long-lived one. A live standalone found in the registry is reused as before and both files are left alone. `--new-token` mints a token and saves it over the old one only once the server listens, so a failed start revokes nothing; next to `--token` it is refused, and against a live standalone it is ignored with one stderr line. Without `--port` the saved port is tried first; if it is taken (`EADDRINUSE`, or `EACCES` from a Windows excluded port range) the server retries once on an OS-assigned port and keeps the saved one for the next start. Only a port the server picked itself is saved: an explicit `--port` serves that run only, so test and e2e runs, which always pass one, never move a user's port (every harness that starts the CLI's server also gives it a temp `HOME` and `USERPROFILE`). The CLI shuts down on `SIGHUP` like on `SIGINT`/`SIGTERM`, so a closed terminal still removes `server.json`.
 
 ### ClientMessageHandler
 
@@ -426,7 +428,7 @@ Per-agent runtime data: provider reference, session key, transcript-fallback fie
 ## Persistence
 
 ```
-~/.pixel-agents/
+~/.pixelmates/
   config.json              { vscode, standalone, externalAssetDirectories, hooksConsent, hooksEnabled (both per-provider) }
   vscode-state.json        { agents, seats }
   standalone-state.json    { agents, seats }
@@ -556,7 +558,7 @@ XP pays for real work only; activity (turns, tool calls, sub-agents) pays nothin
 
 Claude Code passes its status line command a JSON on stdin that carries the official `rate_limits.five_hour` and `rate_limits.seven_day` (`used_percentage`, `resets_at` in epoch seconds). The ledger only estimates those windows from tokens, so a wrapper reads them. Design record: `docs/adr/0002`.
 
-- **The wrapper** is provider `claude-statusline` (`claudeStatusline.ts`), off by default and consent-gated like the hooks. Installed, `statusLine.command` is `node "<~/.pixel-agents/hooks/statusline-tee.js>" '<original>'` (sh single-quote escaping, no argument when there was no status line). It spawns the original at once with `shell: true`, inherited env, cwd, stdout and stderr (ANSI and OSC 8 bytes never pass through it), forwards stdin chunk by chunk, and exits with the original's code (128 + signal; 127 if it cannot start). Up to 256 KiB of stdin is parsed; the body is built from scratch (`{fiveHour, sevenDay}`, each null or `{usedPercentage, resetsAt}`) and POSTed to every `readServerTargets` target, each request destroyed 150 ms after creation. It prints nothing; the only log is the opt-in debug file. POSIX only: the provider's install throws on win32.
+- **The wrapper** is provider `claude-statusline` (`claudeStatusline.ts`), off by default and consent-gated like the hooks. Installed, `statusLine.command` is `node "<~/.pixelmates/hooks/statusline-tee.js>" '<original>'` (sh single-quote escaping, no argument when there was no status line). It spawns the original at once with `shell: true`, inherited env, cwd, stdout and stderr (ANSI and OSC 8 bytes never pass through it), forwards stdin chunk by chunk, and exits with the original's code (128 + signal; 127 if it cannot start). Up to 256 KiB of stdin is parsed; the body is built from scratch (`{fiveHour, sevenDay}`, each null or `{usedPercentage, resetsAt}`) and POSTed to every `readServerTargets` target, each request destroyed 150 ms after creation. It prints nothing; the only log is the opt-in debug file. POSIX only: the provider's install throws on win32.
 - **Install / uninstall** (`claudeStatuslineInstaller.ts`, through the hook installer's guarded write): no statusLine → the wrapper alone; `{type: 'command', command}` → only the command is replaced, every other field kept; already ours → no-op; anything else → refused naming the keys found. Uninstall reads the original back out of the wrapper's argument; a statusLine that is not ours by identity (hook rule plus "nothing, or exactly one single-quoted word") is left as is and logged. Extension removal restores it too (`uninstall.ts`).
 - **Route + store**: `parseUsageLimitsBody` refuses anything but the two windows (an extra key at either level, a non-number, out of range, both null) with 400. `UsageLimitsStore` keeps one sample per window and replaces it only with one not older (later `resetsAt`, or the same with equal or higher usage), since every session posts the same account-wide limits and an idle one re-posts its last snapshot; an accepted post advances `receivedAt` and broadcasts `usageLimits`. A new reset time anchors the token ledger (`anchorQuota`), so its window captions read `quota`.
 - **Handshake**: the process that owns the HTTP server sends `usageLimits` on every connect, with both windows null and `receivedAt` 0 before the first reading. A VS Code window reusing another window's server sends none, so its panel shows nothing new rather than waiting forever.
@@ -590,7 +592,7 @@ Custom ESLint rules (`eslint-rules/pixel-agents-rules.mjs`) enforce: `no-inline-
 
 **Speech bubbles**: Permission ("..." amber dots) stays until clicked/cleared. Waiting (green checkmark) auto-fades 2 s. Sprites in `spriteData.ts`. Above the head, bottom up: the bubble, the tripwire beacon, the health mark; the idle z only when none of them (nor a dead state) holds the slot.
 
-**Sound notifications**: Ascending two-note chime (E5 → E6) via Web Audio API plays when waiting bubble appears (`agentStatus: 'waiting'`), except inside a reconnect's resync window, whose resend restates every status. `notificationSound.ts` manages AudioContext lifecycle; `unlockAudio()` on canvas mousedown resumes the context (webviews start suspended). Toggled via Settings modal. Persisted per-namespace in `~/.pixel-agents/config.json`.
+**Sound notifications**: Ascending two-note chime (E5 → E6) via Web Audio API plays when waiting bubble appears (`agentStatus: 'waiting'`), except inside a reconnect's resync window, whose resend restates every status. `notificationSound.ts` manages AudioContext lifecycle; `unlockAudio()` on canvas mousedown resumes the context (webviews start suspended). Toggled via Settings modal. Persisted per-namespace in `~/.pixelmates/config.json`.
 
 **Seats**: Derived from chair furniture. `layoutToSeats()` creates a seat at every footprint tile of every chair. Multi-tile chairs produce multiple seats keyed `uid` / `uid:1` / `uid:2`. Facing direction priority: 1) chair `orientation` from catalog (front→DOWN, back→UP, left→LEFT, right→RIGHT), 2) adjacent desk direction, 3) forward (DOWN). Click character → select (white outline) → click available seat → reassign.
 
@@ -612,7 +614,7 @@ Toggle via "Layout" button. Tools: SELECT (default), Floor paint, Wall paint, Er
 
 **Grid expansion**: In floor/wall/erase tools, a ghost border (dashed outline) appears 1 tile outside the grid. Clicking a ghost tile calls `expandLayout()` to grow the grid by 1 tile in that direction. New tiles are VOID. Furniture positions and character positions shift when expanding left/up. Max: `MAX_COLS`×`MAX_ROWS` (64×64). Default: `DEFAULT_COLS`×`DEFAULT_ROWS` (20×11). Characters outside bounds after resize relocated to random walkable tiles.
 
-**Layout model**: `{ version: 1, cols, rows, tiles: TileType[], furniture: PlacedFurniture[], tileColors?: ColorValue[] }`. Grid dimensions are dynamic. Persisted via debounced saveLayout message → `writeLayoutToFile()` → `~/.pixel-agents/layout.json`.
+**Layout model**: `{ version: 1, cols, rows, tiles: TileType[], furniture: PlacedFurniture[], tileColors?: ColorValue[] }`. Grid dimensions are dynamic. Persisted via debounced saveLayout message → `writeLayoutToFile()` → `~/.pixelmates/layout.json`.
 
 ## Asset System
 
@@ -689,7 +691,7 @@ Run: `npm run test:webview`.
 
 ### End-to-end (Playwright)
 
-`e2e/` contains Playwright tests against a real VS Code Electron instance and a standalone Fastify server. CI runs the suite on Linux, macOS, and Windows in three shards at `--workers=1`. The generated [e2e inventory](e2e/README.md) is the source of truth for current specs, scenarios, and `@area:` coverage.
+`e2e/` contains Playwright tests against a real VS Code Electron instance and a standalone Fastify server. CI runs only the standalone project (`npm run e2e:standalone`) on Linux at `--workers=1`; the VS Code suite is local. The generated [e2e inventory](e2e/README.md) is the source of truth for current specs, scenarios, and `@area:` coverage.
 
 **Mock claude**: Tests never invoke real `claude`. A bash script (`e2e/fixtures/mock-claude`) is copied into an isolated `bin/` and prepended to `PATH`. The scenario runner (`mock-claude-runner.cjs`) honors `claudeScenario(...).at(ms).appendJsonl(record).emitHook(event).holdOpenFor(ms).build()` to drive timed JSONL writes and hook events.
 
@@ -737,7 +739,7 @@ npm run e2e                # Playwright
 3. **Claude scripts** (`dist/hooks/claude-hook.js`, `dist/hooks/statusline-tee.js`) from `server/src/providers/hook/claude/hooks/`. CJS, shebang. Both sources sit in that one directory on purpose: entry points in different directories make esbuild nest the output under their common base. Watch builds skip them.
 4. **Memory MCP** (`plugin/server/memory-mcp.cjs` + `dist/memory-mcp.cjs`) from `server/src/memory/mcpMain.ts`. Fixed options in every mode (node18 CJS, no minify, no sourcemap), so CI's `--production` build and `npm run plugin:build` (this bundle only) write the same bytes.
 
-`define: { 'process.env.PIXEL_AGENTS_VERSION': JSON.stringify(version) }` stamps the package version into all bundles.
+`define: { 'process.env.PIXELMATES_VERSION': JSON.stringify(version) }` stamps the package version into all bundles.
 
 **Watch mode**:
 
@@ -752,9 +754,9 @@ The webview Vite dev server is **not** included in `npm run watch` — it has to
 
 ### CI
 
-Single workflow runs (in order): install, lint, `asyncapi:validate`, `asyncapi:generate` + drift check, `e2e:inventory` + drift check, `plugin:build` + drift check of `plugin/` (blocking), `check-types`, `test:server`, `test:webview`, `e2e` (3-OS x 3-shard matrix: Linux, macOS, Windows), `package`, then a PR-only Vercel preview deploy of the combined Allure report (gated on secrets; gracefully skips on forks, non-blocking on failure). Pushes to `main` run the checks but never deploy to Vercel.
+`.github/workflows/ci.yml`: the `ci` job (install, `asyncapi:validate`, `asyncapi:generate` + drift check, `e2e:inventory` + drift check, `plugin:build` + drift check of `plugin/`, `check-types`, lint, webview and server tests, format check, build, package contract + npm artifact, audit and knip as advisory), `npm-package-node20`, `e2e` (the standalone Playwright project on ubuntu: `npm run e2e:standalone`, system deps from `playwright install --with-deps chromium`) and `required-checks`. The VS Code specs under `e2e/tests/claude` are a local suite and never run in CI. `release.yml` publishes to npm from a published GitHub release (trusted publishing, `--provenance`).
 
-The drift checks are the central guarantees: `core/asyncapi.yaml` ↔ `core/src/messages.ts` stay in lockstep; `e2e/README.md` stays in sync with the spec list; the committed `plugin/server/memory-mcp.cjs` and the plugin manifest version match `server/src/memory` and `package.json`.
+The drift checks are the central guarantees: `core/asyncapi.yaml` and `core/src/messages.ts` stay in lockstep; `e2e/README.md` stays in sync with the spec list; the committed `plugin/server/memory-mcp.cjs` and the plugin manifest version match `server/src/memory` and `package.json`.
 
 ## TypeScript Constraints
 
@@ -788,7 +790,7 @@ All magic numbers and strings are centralized — never inline:
 
 Use `console.log`/`error`/`warn` with prefixed context:
 
-- Extension: `[Pixel Agents]`, `[Extension]`
+- Extension: `[pixelmates]`, `[Extension]`
 - Asset loading: `[AssetLoader]`
 - Webview: `[Webview]`
 
@@ -801,7 +803,7 @@ Use `console.log`/`error`/`warn` with prefixed context:
 - User prompt `content` can be string (text) or array (tool_results) — handle both.
 - `/clear` creates a NEW JSONL file (old file just stops).
 - `--output-format stream-json` needs non-TTY stdin — can't use with VS Code terminals.
-- Hook-based IPC failed in early prototypes (hooks captured at startup, env vars don't propagate). HTTP `/api/hooks/:providerId` with `~/.pixel-agents/server.json` discovery works.
+- Hook-based IPC failed in early prototypes (hooks captured at startup, env vars don't propagate). HTTP `/api/hooks/:providerId` with `~/.pixelmates/server.json` discovery works.
 - PNG→SpriteData: pngjs for RGBA buffer, alpha threshold 2 (`PNG_ALPHA_THRESHOLD`), supports `#RRGGBBAA` semi-transparent pixels.
 - OfficeCanvas selection changes are imperative (`editorState.selectedFurnitureUid`); must call `onEditorSelectionChange()` to trigger React re-render for toolbar.
 - **External-session adoption**: scanner runs every 3 s. In hooks-OFF mode external scenarios, the test setup can race the first scanner tick. Mock-claude scenarios should give a few seconds of margin before assertions.
@@ -812,7 +814,7 @@ Use `console.log`/`error`/`warn` with prefixed context:
 
 ## Manual Hook Testing
 
-`server/manual-hook-events.http` (REST-Client format) drives the local hook server while the extension is running. Copy `port` and `token` from `~/.pixel-agents/server.json`, set `cwd` to a workspace folder opened in the Extension Development Host. Covers `SessionStart` → `PreToolUse` → `PermissionRequest`/`Notification`/`Stop` → `SessionEnd`.
+`server/manual-hook-events.http` (REST-Client format) drives the local hook server while the extension is running. Copy `port` and `token` from `~/.pixelmates/server.json`, set `cwd` to a workspace folder opened in the Extension Development Host. Covers `SessionStart` → `PreToolUse` → `PermissionRequest`/`Notification`/`Stop` → `SessionEnd`.
 
 If `cwd` is outside the current workspace, enable **Watch All Sessions** first.
 
@@ -840,7 +842,7 @@ Supporting: `wall-tile-editor.html` (wall sprite editing), `jsonl-viewer.html` (
 - **Transport abstraction**: `MessageTransport` interface, `PostMessageTransport` + `WebSocketTransport`. One branching point in the entire UI.
 - **HookProvider** as the integration boundary, with optional file fallback. New CLIs are a single subdirectory under `server/src/providers/hook/<id>/`.
 - **TeamProvider** as optional extension. Claude Agent Teams is the only implementation.
-- **Per-adapter namespaced persistence** under `~/.pixel-agents/`. VS Code and standalone never clobber each other.
+- **Per-adapter namespaced persistence** under `~/.pixelmates/`. VS Code and standalone never clobber each other.
 - **Verify-before-clear migration** for legacy VS Code state.
 - **Single `WebviewViewProvider`** (panel area, not editor area).
 - **Inline esbuild problem matcher** (no extra extension needed).
@@ -849,12 +851,12 @@ Supporting: `wall-tile-editor.html` (wall sprite editing), `jsonl-viewer.html` (
 - **Consent before any FIRST settings-file write**, per provider (`hooksConsent: {providerId: 'granted'|'declined'}`, absent = unanswered; the `hooksEnabled` preference beside it is per-provider and machine-global). **Exactly one population is asked: the one with nothing of ours installed** — hooks already on disk are granted silently at startup, since that install only ever removes events. The ask is one step of the Intro, the four-step first-run tour a greeter character speaks in-app on both surfaces (`IntroBubble.tsx`); the server sends `hooksConsentRequest` during the `webviewReady` handshake, one per provider, privileged connections only, carrying the provider's own `consentDisclosure()` so no client-side copy can drift. The ask-or-not predicate, the choice→action rule, and the execution live ONCE in `server/src/providers/hook/` (`consentGate.ts` decides, `consentExecutor.ts` performs); surfaces supply only their effects. **A choice is an absolute state command, not an event** — Back re-opens the ask, so a revision undoes whatever the earlier answer left: hooks on disk, a grant a failed install recorded, or a decline's own persisted hooks-off. That is why the consent record is a tri-state and each answer commits in ONE config write; the full rule and its rejected alternatives are `docs/adr/0001`. An abort (close x, Escape) sends nothing and the whole Intro returns on the next page load (in-session reconnects are deduped by the webview); the closing step reports the install OUTCOME, not the click. **An off-by-default provider's Settings toggle-on over an unanswered ask asks first** (`toggleNeedsConsent`, both dispatches; the hooks toggle still installs directly, its click being the grant): the preference is recorded on and the provider's `hooksConsentRequest` goes out instead of an install; Install then installs through the executor, and a Not Now takes back a preference the toggle raised above an off-by-default provider's default (`preferenceRaised` → `revertDecline`; a revert after a landed install clears it too). An answered ask, granted or declined, keeps the direct install. A provider can be off by default (`HookProvider.defaultEnabled: false`, the status line wrapper): the handshake never asks about it, only that toggle does. The App closes Settings when the ask it triggered arrives, since the Intro renders under the modal's backdrop.
 - **`hooksStatus` is install state, `hooksEnabled` is preference.** The Settings checkboxes (one per provider: hooks, status line) bind to `hooksInstalled[providerId]` and toggle the _displayed_ state with no optimistic local update, so it can't read "on" over an untouched settings.json and lands correct rather than flickering when an install fails. Every failure path re-derives and broadcasts the truth (standalone via `clientMessageHandler`, VS Code via `reportHooksStatus`). The bundled scripts are copied BEFORE any provider's install writes; a failed copy aborts it (entries pointing at a missing script spawn a dead `node` per event, and a wrapper pointing at one blanks the status line, which is why `installStatusline` also refuses when the wrapper is not on disk). **Hooks-off is persisted only AFTER a successful uninstall** — flipping it first strands the user: the entries keep firing while the persisted preference makes the next start skip the gate entirely.
 - **Never rewrite a shape we did not author.** The unparseable-file abort generalizes: a non-object `hooks`, a non-array `hooks.<Event>`, and junk entries inside an event array are all refused or passed through, never replaced. An array `hooks` was the sharp case — string keys assigned onto it vanish from `JSON.stringify`, so the write committed and reported `installed: true` over a file with no hooks in it. Emptied event keys are deleted only when _our_ removal emptied them. **Internal sentinels must not be values user JSON can hold**: `null` marked "this entry is now empty", so a user-authored `null` inside a hooks array was silently deleted (a file with no Pixel Agents command anywhere came back rewritten and logged as "Hooks removed") — it is a `Symbol` now.
-- **Hook identity is anchored at both ends, not a substring.** `includes('claude-hook.js') && includes('.pixel-agents')` claimed — and `uninstallHooks` then DELETED — a `.backup` copy of our script, a shell comment naming our path, a wrapper passing it as an argument, `/opt/evil.pixel-agents/hooks/claude-hook.js`, and `my-pixel-agents-hook.js`. Ours = the `/.pixel-agents/hooks/claude-hook.js` suffix, ending the command's FIRST token, matched **case-insensitively** (the token is normalized to lower case). Case-sensitive matching is what shipped, and on the case-insensitive volumes this runs on (macOS, Windows) a differently-cased path is the SAME INODE as our script and genuinely firing: reinstall appended a duplicate and uninstall left the cased entry as an orphan our own `areHooksInstalled` could no longer see — a live hook with no removal route. The folding is unconditional (no filesystem case-sensitivity probe), so the accepted trade is a Linux-only false positive that is **not** a mere dedup: on a case-sensitive volume `~/.Pixel-Agents/hooks/claude-hook.js` is a genuinely DIFFERENT file, we classify it as ours, and uninstall **deletes** it (`claudeHookInstaller.test.ts` pins that removal). Nothing creates that path, and the trade is deliberate — the alternative is a guaranteed unremovable live hook on the two platforms this actually ships to. A symlink alias to our script is deliberately _not_ recognized — the cost is one duplicate entry, versus deleting a stranger's hook if we resolved paths.
+- **Hook identity is anchored at both ends, not a substring.** `includes('claude-hook.js') && includes('.pixelmates')` claimed — and `uninstallHooks` then DELETED — a `.backup` copy of our script, a shell comment naming our path, a wrapper passing it as an argument, `/opt/evil.pixelmates/hooks/claude-hook.js`, and `my-pixel-agents-hook.js`. Ours = the `/.pixelmates/hooks/claude-hook.js` suffix, ending the command's FIRST token, matched **case-insensitively** (the token is normalized to lower case). Case-sensitive matching is what shipped, and on the case-insensitive volumes this runs on (macOS, Windows) a differently-cased path is the SAME INODE as our script and genuinely firing: reinstall appended a duplicate and uninstall left the cased entry as an orphan our own `areHooksInstalled` could no longer see — a live hook with no removal route. The folding is unconditional (no filesystem case-sensitivity probe), so the accepted trade is a Linux-only false positive that is **not** a mere dedup: on a case-sensitive volume `~/.Pixel-Agents/hooks/claude-hook.js` is a genuinely DIFFERENT file, we classify it as ours, and uninstall **deletes** it (`claudeHookInstaller.test.ts` pins that removal). Nothing creates that path, and the trade is deliberate — the alternative is a guaranteed unremovable live hook on the two platforms this actually ships to. A symlink alias to our script is deliberately _not_ recognized — the cost is one duplicate entry, versus deleting a stranger's hook if we resolved paths.
 - **E2E over webview unit tests** for OSS friction. Community PRs change webview internals constantly; unit tests would force contributors to update internals tests on top of feature work. E2E pins user-facing behavior, which is stable across internal refactors.
 
 ## Project Identity
 
-- Extension ID: `pablodelucca.pixel-agents` (VS Code Marketplace + Open VSX)
-- npm package: `pixel-agents` (CLI bin: `pixel-agents`)
-- GitHub: `https://github.com/pixel-agents-hq/pixel-agents`
+- npm package: `pixelmates` (CLI bin: `pixelmates`); the VS Code extension is not published
+- Data dir: `~/.pixelmates`; `migrateDataDir.ts` copies the office once from upstream's `~/.pixel-agents`
+- GitHub: `https://github.com/gustavoortega/pixelmates` (fork of `pixel-agents-hq/pixel-agents`)
 - License: MIT

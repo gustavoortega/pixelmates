@@ -91,7 +91,7 @@ const ANSI_RESET = '\u001b[0m';
 // that a monitor terminal tails. The magenta prefix keeps their lines
 // visually distinct from internal-terminal narration, and the short
 // per-session tag keeps interleaved external sessions tellable apart.
-const IS_EXTERNAL = process.env.PIXEL_AGENTS_MOCK_EXTERNAL === '1';
+const IS_EXTERNAL = process.env.PIXELMATES_MOCK_EXTERNAL === '1';
 let externalTag = '';
 
 function tinySessionTag(value) {
@@ -212,7 +212,7 @@ function isPixelAgentsHookCommand(homeDir, command) {
 
   const normalizedCommand = normalizePathForMatch(command);
   const currentHookPath = normalizePathForMatch(
-    path.join(homeDir, '.pixel-agents', 'hooks', 'claude-hook.js'),
+    path.join(homeDir, '.pixelmates', 'hooks', 'claude-hook.js'),
   );
 
   return (
@@ -325,7 +325,7 @@ function runHookCommand(command, payload, env, cwd) {
   // (mockBin:/usr/local/bin:/usr/bin:/bin) with inheritEnv:false, which on CI
   // runners does NOT include the toolcache node dir — so bare `node` exits 127
   // and the hook never POSTs. The mock itself survives because its wrapper uses
-  // the absolute PIXEL_AGENTS_NODE_BIN, but the spawned hook uses bare `node`.
+  // the absolute PIXELMATES_NODE_BIN, but the spawned hook uses bare `node`.
   // Prepend the running node's bin dir to PATH so the hook resolves it, on any
   // spawn path. (Real Claude Code spawns hooks with the user's real PATH, so
   // this is purely a test-harness fix.)

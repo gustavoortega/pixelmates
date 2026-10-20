@@ -2,10 +2,10 @@
  * FileStateAdapter: shared StateAdapter implementation for both VS Code and standalone.
  *
  * Settings (per adapter namespace) persist to
- *   ~/.pixel-agents/config.json  under keys "vscode" or "standalone".
+ *   ~/.pixelmates/config.json  under keys "vscode" or "standalone".
  *
  * Agents + seats (per adapter) persist to
- *   ~/.pixel-agents/<namespace>-state.json
+ *   ~/.pixelmates/<namespace>-state.json
  *
  * Runtime visibility (which agents show in the office) is scope-controlled by the
  * runtime scanner + Watch All Sessions toggle, not by persistence. Both adapters
@@ -112,7 +112,7 @@ export class FileStateAdapter implements StateAdapter {
             : {},
       };
     } catch (err) {
-      console.error('[Pixel Agents] Failed to read adapter state:', err);
+      console.error('[pixelmates] Failed to read adapter state:', err);
       return { ...EMPTY_STATE };
     }
   }
@@ -128,7 +128,7 @@ export class FileStateAdapter implements StateAdapter {
       fs.writeFileSync(tmpPath, json, 'utf-8');
       fs.renameSync(tmpPath, this.stateFilePath);
     } catch (err) {
-      console.error('[Pixel Agents] Failed to write adapter state:', err);
+      console.error('[pixelmates] Failed to write adapter state:', err);
     }
   }
 }

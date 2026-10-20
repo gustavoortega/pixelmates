@@ -1231,6 +1231,13 @@ function renderIdleGlyph(
  * large one half a cycle apart (napZzPlacements). Placed from the sprite's top-left like the other
  * idle props, so it follows the seat sink.
  */
+let napZzDropPx = 0;
+
+/** Dev-only (the README hero scene): starts the napper's Zz this many world px lower, so it shows under a plate lifted clear of the head. */
+export function setSceneNapZzDrop(px: number): void {
+  napZzDropPx = px;
+}
+
 function renderNapZz(
   ctx: CanvasRenderingContext2D,
   ch: Character,
@@ -1253,7 +1260,7 @@ function renderNapZz(
     ctx.drawImage(
       getCachedSprite(glyph.sprite, zoom),
       drawX + Math.round(glyph.dx * zoom),
-      drawY + Math.round(glyph.dy * zoom),
+      drawY + Math.round((glyph.dy + napZzDropPx) * zoom),
     );
   }
   ctx.restore();

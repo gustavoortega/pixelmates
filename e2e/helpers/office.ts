@@ -62,6 +62,9 @@ export async function expectOverlayStatus(
   await expect(getOverlaysByStatus(frame, status).first()).toBeAttached({ timeout });
 }
 
+/** How long a scan waits for a selected agent's full box to draw. */
+const FULL_BOX_TIMEOUT_MS = 2_000;
+
 /**
  * Every agent's full-box text. Sub-agents (negative ids) have no compact
  * element, so they only appear while their parent is selected; scanning each
@@ -72,6 +75,12 @@ async function scanOverlays(frame: OverlaySurface): Promise<Array<{ id: number; 
   const rootIds = (await readAgentOverlayIds(frame)).filter((id) => id >= 0);
   for (const rootId of rootIds) {
     await selectCharacter(frame, rootId);
+    // The full box (its × close button) renders on the frame drawn after the selection, not with it: read before
+    // that and the scan sees the one-word tag. A box that never opens (the inspector sheet owns the agent) is read
+    // as it stands once the wait is up.
+    await expect(getOverlayByAgentId(frame, rootId))
+      .toContainText('×', { timeout: FULL_BOX_TIMEOUT_MS })
+      .catch(() => undefined);
     for (const { id, text } of await readRawOverlayTexts(frame)) {
       // Only the selected agent and revealed sub-agents show the full box.
       if (id === rootId || id < 0) seen.set(id, text);

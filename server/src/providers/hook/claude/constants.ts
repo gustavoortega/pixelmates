@@ -12,7 +12,7 @@ import type { ModelTier } from '../../../../../core/src/provider.js';
 export const CLAUDE_HOOK_SCRIPT_NAME = 'claude-hook.js';
 /** Output filename of statusline-tee.ts, the wrapper chained in front of the user's statusLine command. */
 export const STATUSLINE_TEE_SCRIPT_NAME = 'statusline-tee.js';
-/** Every bundled script copied to ~/.pixel-agents/hooks/. They ship together, so one copy step refreshes both. */
+/** Every bundled script copied to ~/.pixelmates/hooks/. They ship together, so one copy step refreshes both. */
 export const HOOK_SCRIPT_NAMES = [CLAUDE_HOOK_SCRIPT_NAME, STATUSLINE_TEE_SCRIPT_NAME] as const;
 
 /** The tee reads at most this much of its stdin before giving up on the JSON. The status line input is a few KB;
@@ -22,9 +22,14 @@ export const STATUSLINE_STDIN_CAP_BYTES = 256 * 1024;
  *  the status line back by more than this. */
 export const STATUSLINE_POST_BUDGET_MS = 150;
 
-/** The script name we shipped before the rename to claude-hook.js. Still
- *  recognized as ours so a very old install can be migrated or removed. */
-export const LEGACY_HOOK_SCRIPT_NAME = 'pixel-agents-hook.js';
+/** The scripts of upstream Pixel Agents, the app pixelmates was forked from. They are not ours: they are found,
+ *  reported, and removed only when the user ticks the consent dialog's checkbox. Lower-case, matched against the
+ *  case-folded script path. `pixel-agents-hook.js` is upstream's name from before it renamed to claude-hook.js. */
+export const UPSTREAM_HOOK_PATH_SUFFIXES = [
+  '/.pixel-agents/hooks/claude-hook.js',
+  '/pixel-agents-hook.js',
+] as const;
+export const UPSTREAM_TEE_PATH_SUFFIX = '/.pixel-agents/hooks/statusline-tee.js';
 
 /** Hook events to install in ~/.claude/settings.json. This list is the whole
  *  data-collection surface: Claude Code POSTs each of these payloads to the
@@ -57,10 +62,10 @@ export const CLAUDE_HOOK_EVENTS = [
  *  rather than a generic `.backup`, which collides with other tools' backup
  *  convention: a foreign `.backup` sitting next to settings.json must not make
  *  us believe we already saved the user's original. */
-export const SETTINGS_BACKUP_SUFFIX = '.pixel-agents.backup';
+export const SETTINGS_BACKUP_SUFFIX = '.pixelmates.backup';
 
 /** Suffix of the temp file used for the atomic tmp-write + rename. */
-export const SETTINGS_TMP_SUFFIX = '.pixel-agents-tmp';
+export const SETTINGS_TMP_SUFFIX = '.pixelmates-tmp';
 
 /** Mode for a settings.json we create ourselves. An existing file's mode is
  *  preserved instead; this is only the fresh-file default, and it is the

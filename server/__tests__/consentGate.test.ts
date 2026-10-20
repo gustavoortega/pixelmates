@@ -21,13 +21,22 @@ describe('hooksConsentRequest — when to ask', () => {
     privileged: true,
   };
 
+  // The real provider reads ~/.claude/settings.json for the other app's entries; these pin the gate, not the disk.
+  const noLegacy = { ...claudeProvider, legacyReplaceLabel: () => null };
+
   it('asks the one population with nothing of ours installed', () => {
-    expect(hooksConsentRequest(askable, claudeProvider)).toEqual({
+    expect(hooksConsentRequest(askable, noLegacy)).toEqual({
       type: 'hooksConsentRequest',
       providerId: 'claude',
       headline: CONSENT_INSTALL_HEADLINE,
       disclosure: CONSENT_DISCLOSURE,
     });
+  });
+
+  it('adds the replace checkbox label only when the other app is found', () => {
+    const found = { ...claudeProvider, legacyReplaceLabel: () => 'Replace X' };
+    expect(hooksConsentRequest(askable, found)?.replaceLegacyLabel).toBe('Replace X');
+    expect(hooksConsentRequest(askable, noLegacy)).not.toHaveProperty('replaceLegacyLabel');
   });
 
   // The payload carries the provider's copy so the webview renders the exact

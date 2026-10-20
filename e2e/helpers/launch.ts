@@ -41,9 +41,9 @@ export interface LaunchOptions {
    * (single-folder default is unchanged).
    */
   workspaceFolders?: string[];
-  /** Pre-seed `~/.pixel-agents/config.json` (written before the server reads it). */
+  /** Pre-seed `~/.pixelmates/config.json` (written before the server reads it). */
   seedConfig?: unknown;
-  /** Pre-seed `~/.pixel-agents/layout.json` (written before the panel loads). */
+  /** Pre-seed `~/.pixelmates/layout.json` (written before the panel loads). */
   seedLayout?: unknown;
   /**
    * Pre-seed `~/.claude/settings.json` (written before the extension activates).
@@ -79,7 +79,7 @@ export async function launchVSCode(
   fs.mkdirSync(mockBinDir, { recursive: true });
 
   // Pre-seed user-level config/layout under the isolated HOME, BEFORE VS Code
-  // launches — the server reads ~/.pixel-agents/{config,layout}.json on startup,
+  // launches — the server reads ~/.pixelmates/{config,layout}.json on startup,
   // so a test that needs specific areaMappings / showAreas / a known layout must
   // write them now. layout.json must carry a high layoutRevision to survive the
   // bundled-default reset gate (server/src/layoutPersistence.ts).
@@ -90,7 +90,7 @@ export async function launchVSCode(
   // through the Settings modal. Missing keys are filled with product defaults
   // by server/src/configPersistence.ts. Tests override via opts.seedConfig
   // (buildSeedConfig in layout-seed.ts carries the same baseline).
-  const paDir = path.join(tmpHome, '.pixel-agents');
+  const paDir = path.join(tmpHome, '.pixelmates');
   fs.mkdirSync(paDir, { recursive: true });
   // The granted hooksConsent entry is part of the baseline: without it the first-run consent
   // dialog pops up inside the webview on open, gating hook installation and
@@ -266,22 +266,22 @@ export async function launchVSCode(
         env: {
           PATH: `${mockBinDir}:/usr/local/bin:/usr/bin:/bin`,
           HOME: tmpHome,
-          PIXEL_AGENTS_E2E_CLAUDE_BIN: mockClaudeBinaryPath,
-          PIXEL_AGENTS_NODE_BIN: process.execPath,
+          PIXELMATES_E2E_CLAUDE_BIN: mockClaudeBinaryPath,
+          PIXELMATES_NODE_BIN: process.execPath,
           ZDOTDIR: tmpHome,
           CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
           // inheritEnv is false for this profile, so the diagnostic log
           // path must be set explicitly here or the mock-spawned
           // claude-hook.js (which runs in this terminal) can't write to
           // it. Path matches the `debugLogFile` const below.
-          PIXEL_AGENTS_DEBUG_LOG: path.join(tmpHome, '.pixel-agents', 'debug.log'),
+          PIXELMATES_DEBUG_LOG: path.join(tmpHome, '.pixelmates', 'debug.log'),
           // Narration log paths for the mock-claude wrapper's background tail
           // (see e2e/fixtures/mock-claude). inheritEnv:false means these must
           // be set on the profile too, or internal mock tabs are silently
           // narration-less on macOS — which is where the review videos record.
           // Paths match the process-env block below.
-          PIXEL_AGENTS_TEST_NARRATION_LOG: path.join(tmpHome, '.claude-mock', 'test-narration.log'),
-          PIXEL_AGENTS_EXTERNAL_NARRATION_LOG: path.join(
+          PIXELMATES_TEST_NARRATION_LOG: path.join(tmpHome, '.claude-mock', 'test-narration.log'),
+          PIXELMATES_EXTERNAL_NARRATION_LOG: path.join(
             tmpHome,
             '.claude-mock',
             'external-narration.log',
@@ -326,24 +326,24 @@ export async function launchVSCode(
   // attaches it as `pixel-agents-debug-log` so CI failure analysis can read
   // the exact event timeline. Per-test isolated under tmpHome so parallel
   // workers don't interleave (though e2e uses workers=1 anyway).
-  const debugLogFile = path.join(tmpHome, '.pixel-agents', 'debug.log');
+  const debugLogFile = path.join(tmpHome, '.pixelmates', 'debug.log');
   fs.mkdirSync(path.dirname(debugLogFile), { recursive: true });
 
   const env: Record<string, string> = {
     ...(applyMockHomeEnv(process.env, tmpHome) as Record<string, string>),
     // Prepend mock bin so 'claude' resolves to our mock
     PATH: `${mockBinDir}${PATH_SEP}${process.env['PATH'] ?? '/usr/local/bin:/usr/bin:/bin'}`,
-    PIXEL_AGENTS_E2E_CLAUDE_BIN: mockClaudeBinaryPath,
-    PIXEL_AGENTS_E2E_LAUNCH_LOG: launchLogFile,
-    PIXEL_AGENTS_NODE_BIN: process.execPath,
-    PIXEL_AGENTS_DEBUG_LOG: debugLogFile,
+    PIXELMATES_E2E_CLAUDE_BIN: mockClaudeBinaryPath,
+    PIXELMATES_E2E_LAUNCH_LOG: launchLogFile,
+    PIXELMATES_NODE_BIN: process.execPath,
+    PIXELMATES_DEBUG_LOG: debugLogFile,
     // Narration log paths, consumed by the mock-claude wrapper to background a
     // headerless tail into its own terminal tab (yellow [test] + magenta
     // [external] lines interleaved with the runner's cyan output). On Linux the
     // process env propagates to the integrated terminal; macOS also needs these
     // on the e2e terminal profile (inheritEnv:false) — see the block above.
-    PIXEL_AGENTS_TEST_NARRATION_LOG: path.join(tmpHome, '.claude-mock', 'test-narration.log'),
-    PIXEL_AGENTS_EXTERNAL_NARRATION_LOG: path.join(
+    PIXELMATES_TEST_NARRATION_LOG: path.join(tmpHome, '.claude-mock', 'test-narration.log'),
+    PIXELMATES_EXTERNAL_NARRATION_LOG: path.join(
       tmpHome,
       '.claude-mock',
       'external-narration.log',
@@ -417,7 +417,7 @@ export async function launchVSCode(
       cwd: resolvedWorkspaceDir,
       timeout: 60_000,
     };
-    if (!IS_WINDOWS && process.env['PIXEL_AGENTS_E2E_NO_VIDEO'] !== '1') {
+    if (!IS_WINDOWS && process.env['PIXELMATES_E2E_NO_VIDEO'] !== '1') {
       launchOptions.recordVideo = {
         dir: videoDir!,
         size: { width: 1280, height: 800 },
@@ -431,11 +431,11 @@ export async function launchVSCode(
     // Mark this as the e2e harness BEFORE the Pixel Agents webview iframe loads.
     // addInitScript runs in every frame on attach/navigate (including that
     // iframe, which opens later when the panel is shown), so the webview reads
-    // __PIXEL_AGENTS_E2E === true and installs its test-only observability hooks
+    // __PIXELMATES_E2E === true and installs its test-only observability hooks
     // (window.__pixelAgentsTestHooks). In production the flag is absent, so
     // those hooks (and their unbounded logs) never run.
     await window.addInitScript(() => {
-      (window as unknown as { __PIXEL_AGENTS_E2E?: boolean }).__PIXEL_AGENTS_E2E = true;
+      (window as unknown as { __PIXELMATES_E2E?: boolean }).__PIXELMATES_E2E = true;
     });
 
     // The Ozone headless backend ignores --window-size CLI flags, so VS Code

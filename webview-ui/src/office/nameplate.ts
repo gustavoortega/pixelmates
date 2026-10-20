@@ -108,6 +108,47 @@ export function fullPlateMaxWidth(zoom: number, dpr: number): number {
 
 let fullPlates = false;
 let monitorFullPlates = false;
+let sceneTextScale = 1;
+let sceneTwoLine = false;
+
+/** Dev-only (the README hero scene, `&text=1.25`): grows line 2 of the full plate so it stays legible once the scene is scaled down. */
+export function setSceneTextScale(mul: number): void {
+  sceneTextScale = mul;
+}
+
+/** Dev-only (`&text=1.25`): the staged scene's plates are two lines, `LvN Name` over the state. */
+export function setSceneTwoLinePlates(on: boolean): void {
+  sceneTwoLine = on;
+}
+
+export function isSceneTwoLinePlates(): boolean {
+  return fullPlates && sceneTwoLine;
+}
+
+/** The scene's text multiplier: 1 everywhere but the staged scene. */
+export function sceneTextMultiplier(): number {
+  return fullPlates ? sceneTextScale : 1;
+}
+
+/** Font and line height of a full plate's line 2, CSS px at scale 1. The scene's two-line plate sets
+ *  line 2 tight under line 1 (the task subtitle's blank row is gone). */
+export function plateLine2Metrics(): { font: number; line: number } {
+  const k = sceneTextMultiplier();
+  const font = PLATE_FULL_SUB_FONT_PX * k;
+  return { font, line: isSceneTwoLinePlates() ? Math.ceil(font) : PLATE_FULL_LINE2_PX * k };
+}
+
+/** The scene's pop and banner multiplier: pops stay at the 36 px floor, not the plate text's size. */
+export const SCENE_FX_TEXT_SCALE = 1.2;
+export function sceneFxMultiplier(): number {
+  return isSceneTwoLinePlates() ? SCENE_FX_TEXT_SCALE : 1;
+}
+
+/** The scene's plates float this far (CSS px) above where the head slot would put them, clear of a napper's Zz. */
+export const SCENE_PLATE_LIFT_PX = 30;
+
+/** Line 1 of the scene's two-line plate: the name's own height, no blank band under it. */
+const SCENE_PLATE_LINE1_PX = 24;
 
 /** The monitor layout's rule (monitorLayout `fullPlates`): a full rail beside a stage tall enough
  *  for two-line plates. Unlike the hero scene's switch it leaves the plates' scale alone. */
@@ -215,7 +256,7 @@ export function plateMetrics(c: Pick<NameplateContent, 'helper'>, compact: boole
     };
   return {
     ...box,
-    line1: PLATE_FULL_LINE1_PX,
+    line1: isSceneTwoLinePlates() ? SCENE_PLATE_LINE1_PX : PLATE_FULL_LINE1_PX,
     nameFont: PLATE_FULL_NAME_FONT_PX,
     stateFont: PLATE_FULL_STATE_FONT_PX,
     medal: MEDAL_FULL_PX,
@@ -232,7 +273,7 @@ function hasLine2(c: NameplateContent, compact: boolean): boolean {
 export function plateBoxHeight(c: NameplateContent, compact = false): number {
   const m = plateMetrics(c, compact);
   const line1 = c.name || c.state ? m.line1 : 0;
-  const lines = line1 + (hasLine2(c, compact) ? PLATE_FULL_LINE2_PX : 0);
+  const lines = line1 + (hasLine2(c, compact) ? plateLine2Metrics().line : 0);
   return lines > 0 ? lines + 2 * m.padY + 2 * m.border + m.shadow : 0;
 }
 
@@ -305,7 +346,7 @@ export function plateBoxWidth(
     : row([p.tab, p.medal, p.name, p.loop, p.state]);
   const line2 =
     c.sub && hasLine2(c, compact) && !essential
-      ? pixelTextWidth(c.sub.map((part) => part.text).join(' \u00B7 '), PLATE_FULL_SUB_FONT_PX)
+      ? pixelTextWidth(c.sub.map((part) => part.text).join(' \u00B7 '), plateLine2Metrics().font)
       : 0;
   return Math.max(line1, line2) + 2 * PLATE_PAD_X_PX + 2 * p.m.border;
 }
@@ -341,7 +382,7 @@ export function plateFit(
   }
   let sub: PlatePart[] | null = null;
   if (c.sub && hasLine2(c, compact)) {
-    const font = PLATE_FULL_SUB_FONT_PX;
+    const font = plateLine2Metrics().font;
     const sep = pixelTextWidth(' \u00B7 ', font);
     const widths = c.sub.map((part, i) => pixelTextWidth(part.text, font) + (i > 0 ? sep : 0));
     // Only a leading session part (the branch) can be cut; the age and the counts are whole or gone.

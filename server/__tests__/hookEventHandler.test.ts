@@ -142,24 +142,131 @@ describe('HookEventHandler', () => {
     expect(agent.permissionSent).toBe(true);
   });
 
-  it('Notification idle_prompt marks agent waiting', () => {
-    const agent = createTestAgent({ id: 1 });
-    agents.set(1, agent);
-    handler.registerAgent('sess-1', 1);
+  // ── Question and idle waits ─────────────────────────────────
 
-    handler.handleEvent('claude', {
-      hook_event_name: 'Notification',
-      session_id: 'sess-1',
-      notification_type: 'idle_prompt',
+  describe('question and idle waits', () => {
+    const ASK_INPUT = {
+      questions: [
+        {
+          question: 'Which database should the migration target?',
+          header: 'DB',
+          multiSelect: false,
+        },
+      ],
+    };
+    const hook = (name: string, extra: Record<string, unknown> = {}) =>
+      handler.handleEvent('claude', { hook_event_name: name, session_id: 'sess-1', ...extra });
+    const ask = () => hook('PreToolUse', { tool_name: 'AskUserQuestion', tool_input: ASK_INPUT });
+    const lastStatus = () => mockWebview.messages.filter((m) => m.type === 'agentStatus').at(-1);
+    let agent: AgentState;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(Date.parse('2026-10-20T10:00:00Z'));
+      agent = createTestAgent({ id: 1 });
+      agents.set(1, agent);
+      handler.registerAgent('sess-1', 1);
+    });
+    afterEach(() => vi.useRealTimers());
+
+    // K1: a session that finished and sat idle is not asking anything, and the idle prompt
+    // does not make it a newer wait.
+    it('idle_prompt after Stop is an idle wait: no question, and the Stop start is kept', () => {
+      hook('Stop');
+      const stoppedAt = Date.now();
+      vi.advanceTimersByTime(5 * 60_000);
+      hook('Notification', { notification_type: 'idle_prompt' });
+
+      expect(lastStatus()).toEqual({
+        type: 'agentStatus',
+        id: 1,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        since: stoppedAt,
+      });
     });
 
-    expect(agent.isWaiting).toBe(true);
-    const msg = mockWebview.messages.find(
-      (m) => m.type === 'agentStatus' && m.status === 'waiting',
-    );
-    expect(msg).toBeTruthy();
-    // idle_prompt = waiting on the user -> awaitingInput true ("Waiting for input")
-    expect(msg?.awaitingInput).toBe(true);
+    // K2
+    it('a question tool starts a question ticket at once, keeps its tool row, and its result ends it', () => {
+      ask();
+      const now = Date.now();
+      expect(lastStatus()).toEqual({
+        type: 'agentStatus',
+        id: 1,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'question',
+        question: 'Which database should the migration target?',
+        since: now,
+      });
+      expect(mockWebview.messages.some((m) => m.type === 'agentToolStart')).toBe(true);
+      expect(mockWebview.messages.some((m) => m.type === 'agentToolsClear')).toBe(false);
+
+      vi.advanceTimersByTime(30_000);
+      hook('PostToolUse', { tool_name: 'AskUserQuestion' });
+      expect(lastStatus()).toMatchObject({ status: 'active' });
+      expect(agent.awaitingInput).toBeFalsy();
+      expect(agent.question).toBeUndefined();
+    });
+
+    it('the idle prompt that fires while a question is unanswered leaves the question alone', () => {
+      ask();
+      vi.advanceTimersByTime(60_000);
+      hook('Notification', { notification_type: 'idle_prompt' });
+      expect(lastStatus()).toMatchObject({
+        awaitingReason: 'question',
+        since: Date.now() - 60_000,
+      });
+    });
+
+    it('a question the server cannot read still raises the ticket, without text', () => {
+      hook('PreToolUse', { tool_name: 'AskUserQuestion', tool_input: {} });
+      const status = lastStatus()!;
+      expect(status).toMatchObject({ awaitingInput: true, awaitingReason: 'question' });
+      expect(status).not.toHaveProperty('question');
+    });
+
+    // K2b / K2c and the other ways a question ends. A user prompt reaches the server through
+    // the transcript (UserPromptSubmit is not installed): see transcriptParser.test.ts.
+    it("only the lead's own next call or the end of the turn clears the question", () => {
+      ask();
+      // A sub-agent's call, and a parallel tool finishing, are not the answer.
+      hook('PreToolUse', { tool_name: 'Read', tool_input: {}, agent_id: SUB_AGENT_ID });
+      hook('PostToolUse', { tool_name: 'Read' });
+      expect(lastStatus()).toMatchObject({ awaitingReason: 'question' });
+      expect(agent.question).toBeDefined();
+
+      hook('PreToolUse', { tool_name: 'Read', tool_input: {} });
+      expect(lastStatus()).toMatchObject({ status: 'active' });
+      expect(agent.question).toBeUndefined();
+
+      ask();
+      hook('Stop');
+      expect(lastStatus()).toMatchObject({ status: 'waiting', awaitingInput: false });
+      expect(lastStatus()).not.toHaveProperty('question');
+      expect(agent.awaitingReason).toBeUndefined();
+    });
+
+    it('SessionEnd clears a pending question', () => {
+      ask();
+      hook('SessionEnd', { reason: 'clear' });
+      expect(agent.awaitingInput).toBeFalsy();
+      expect(agent.question).toBeUndefined();
+    });
+
+    // K3, hook entry point: the text on the wire is the redacted, flattened, cut one.
+    it('redacts, flattens and cuts the question it puts on the wire', () => {
+      const token = 'ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8';
+      hook('PreToolUse', {
+        tool_name: 'AskUserQuestion',
+        tool_input: { questions: [{ question: `Use ${token}‮ now? ${'y'.repeat(200)}` }] },
+      });
+      const text = lastStatus()!.question as string;
+      expect(text).not.toContain('ghp_');
+      expect(text).not.toMatch(/[‮\n]/);
+      expect(Array.from(text).length).toBeLessThanOrEqual(80);
+    });
   });
 
   // ── Stop ────────────────────────────────────────────────────

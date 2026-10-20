@@ -193,7 +193,7 @@ describe('dist/cli.js entry-point guard', () => {
   itBuilt('runs main() when executed directly: --help prints usage and exits 0', async () => {
     const { code, stdout } = await runCli(['--help']);
     expect(code).toBe(0);
-    expect(stdout).toContain('Usage: pixel-agents');
+    expect(stdout).toContain('Usage: pixelmates');
   });
 
   // 12. Direct execution still runs main()'s port validation (rejects before listen())
@@ -263,7 +263,7 @@ describe('dist/cli.js entry-point guard', () => {
    *  would be testing the helper. The trailing `\s` makes it wait for a
    *  complete line: stdout arrives in chunks, and a half-delivered URL still
    *  parses as a URL (`http://127.0.0.1:501`). */
-  const URL_LINE = /Pixel Agents server running at (\S+)\s/;
+  const URL_LINE = /pixelmates server running at (\S+)\s/;
 
   function printedUrl(output: string): URL {
     const match = URL_LINE.exec(output);
@@ -289,9 +289,29 @@ describe('dist/cli.js entry-point guard', () => {
   /** The token the server actually minted, read from its own discovery file —
    *  an independent witness, so a printed token that drifts from it fails. */
   function mintedToken(tmpHome: string): string {
-    const raw = fs.readFileSync(path.join(tmpHome, '.pixel-agents', 'server.json'), 'utf-8');
+    const raw = fs.readFileSync(path.join(tmpHome, '.pixelmates', 'server.json'), 'utf-8');
     return (JSON.parse(raw) as { token: string }).token;
   }
+
+  // Coming from upstream Pixel Agents: booting the real entry against a populated ~/.pixel-agents performs the one-time
+  // copy, and what belongs to the other app (its token, its hooks) stays there.
+  itBuilt('copies the office from ~/.pixel-agents on first boot', async () => {
+    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-cli-migrate-'));
+    const legacy = path.join(tmpHome, '.pixel-agents');
+    fs.mkdirSync(legacy);
+    fs.writeFileSync(path.join(legacy, 'layout.json'), '{"version":1,"cols":3}');
+    fs.writeFileSync(path.join(legacy, 'config.json'), '{"hooksConsent":{"claude":"granted"}}');
+    fs.writeFileSync(path.join(legacy, 'server-token'), 'upstream-token-0123456789');
+    await runCliServer(tmpHome, async ({ output }) => {
+      expect(fs.readFileSync(path.join(tmpHome, '.pixelmates', 'layout.json'), 'utf-8')).toBe(
+        '{"version":1,"cols":3}',
+      );
+      expect(output()).toContain('Copied your office from ~/.pixel-agents (2 files).');
+      expect(fs.existsSync(path.join(legacy, 'server-token'))).toBe(true);
+      const minted = fs.readFileSync(path.join(tmpHome, '.pixelmates', 'server-token'), 'utf-8');
+      expect(minted.trim()).not.toBe('upstream-token-0123456789');
+    });
+  });
 
   // The printed URL is the ONLY channel by which a real browser obtains the
   // token, and the token is the whole privilege gate (httpServer.ts
@@ -335,7 +355,7 @@ describe('dist/cli.js entry-point guard', () => {
     'serves and prints the --token it was given and leaves the saved token alone',
     async () => {
       const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-cli-token-'));
-      const tokenFile = path.join(tmpHome, '.pixel-agents', 'server-token');
+      const tokenFile = path.join(tmpHome, '.pixelmates', 'server-token');
       fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
       fs.writeFileSync(tokenFile, 'saved-token-0123456789');
       const given = 'given-token-0123456789';
@@ -357,7 +377,7 @@ describe('dist/cli.js entry-point guard', () => {
   // prints a fresh token and saves it, so the next plain start serves the new URL.
   itBuilt('serves, prints and saves a new token on --new-token', async () => {
     const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-cli-new-token-'));
-    const tokenFile = path.join(tmpHome, '.pixel-agents', 'server-token');
+    const tokenFile = path.join(tmpHome, '.pixelmates', 'server-token');
     fs.mkdirSync(path.dirname(tokenFile), { recursive: true });
     fs.writeFileSync(tokenFile, 'saved-token-0123456789');
     await runCliServer(
@@ -427,7 +447,7 @@ describe('dist/cli.js entry-point guard', () => {
     fs.mkdirSync(path.join(tmpHome, '.claude'), { recursive: true });
     // A legacy install: our command on every event we install today, plus the
     // two we no longer do.
-    const ourCommand = `node "${path.join(tmpHome, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+    const ourCommand = `node "${path.join(tmpHome, '.pixelmates', 'hooks', 'claude-hook.js')}"`;
     const thirdPartyCommand = 'node /elsewhere/other-tool.js';
     const legacyEvents = [...CLAUDE_HOOK_EVENTS, 'UserPromptSubmit', 'TaskCreated'];
     const hooks = Object.fromEntries(
@@ -445,7 +465,7 @@ describe('dist/cli.js entry-point guard', () => {
     );
 
     await runCliServer(tmpHome, async ({ output }) => {
-      await waitForCondition(() => output().includes('[Pixel Agents] Hooks installed'));
+      await waitForCondition(() => output().includes('[pixelmates] Hooks installed'));
       const after = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as {
         permissions?: unknown;
         hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
@@ -464,7 +484,7 @@ describe('dist/cli.js entry-point guard', () => {
       // TaskCreated held only ours -> emptied and the key removed entirely.
       expect(after.hooks['TaskCreated']).toBeUndefined();
 
-      const configPath = path.join(tmpHome, '.pixel-agents', 'config.json');
+      const configPath = path.join(tmpHome, '.pixelmates', 'config.json');
       const consent = (
         JSON.parse(fs.readFileSync(configPath, 'utf-8')) as {
           hooksConsent?: Record<string, string>;
@@ -489,19 +509,19 @@ describe('dist/cli.js entry-point guard', () => {
   // (ENOTDIR) without touching the repo's real dist/.
   itBuilt('writes no hook entries when the hook script cannot be copied', async () => {
     const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-cli-nocopy-'));
-    fs.mkdirSync(path.join(tmpHome, '.pixel-agents'), { recursive: true });
+    fs.mkdirSync(path.join(tmpHome, '.pixelmates'), { recursive: true });
     fs.writeFileSync(
-      path.join(tmpHome, '.pixel-agents', 'config.json'),
+      path.join(tmpHome, '.pixelmates', 'config.json'),
       JSON.stringify({ hooksConsent: { claude: 'granted' } }),
     );
     // hooks/ is a FILE, so copying into hooks/claude-hook.js fails.
-    fs.writeFileSync(path.join(tmpHome, '.pixel-agents', 'hooks'), 'not a directory');
+    fs.writeFileSync(path.join(tmpHome, '.pixelmates', 'hooks'), 'not a directory');
 
     await runCliServer(tmpHome, async ({ output }) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       expect(fs.existsSync(path.join(tmpHome, '.claude', 'settings.json'))).toBe(false);
       expect(output()).toContain('Hooks NOT installed');
-      expect(output()).not.toContain('[Pixel Agents] Hooks installed');
+      expect(output()).not.toContain('[pixelmates] Hooks installed');
     });
   });
 
@@ -511,9 +531,9 @@ describe('dist/cli.js entry-point guard', () => {
     // The spawned CLI has no TTY, and without prior consent the first-run gate
     // (rightly) skips hook installation there — seed consent so this test can
     // exercise the actual install path.
-    fs.mkdirSync(path.join(tmpHome, '.pixel-agents'), { recursive: true });
+    fs.mkdirSync(path.join(tmpHome, '.pixelmates'), { recursive: true });
     fs.writeFileSync(
-      path.join(tmpHome, '.pixel-agents', 'config.json'),
+      path.join(tmpHome, '.pixelmates', 'config.json'),
       JSON.stringify({ hooksConsent: { claude: 'granted' } }),
     );
     const port = await getFreePort();
@@ -542,7 +562,7 @@ describe('dist/cli.js entry-point guard', () => {
         }
       });
 
-      const installedHook = path.join(tmpHome, '.pixel-agents', 'hooks', 'claude-hook.js');
+      const installedHook = path.join(tmpHome, '.pixelmates', 'hooks', 'claude-hook.js');
       await waitForCondition(() => fs.existsSync(installedHook));
       expect(fs.readFileSync(installedHook, 'utf-8')).toContain('#!/usr/bin/env node');
       if (process.platform !== 'win32') {

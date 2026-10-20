@@ -636,6 +636,16 @@
   color: var(--mon-ink);
   overflow-wrap: anywhere;
 }
+/* A question is the agent's own words, up to 80 characters: two lines at most, so three tickets
+   still fit the rail at 800 px. */
+.tk[data-kind='question'] .tk-why,
+.tk[data-kind='idle'] .tk-why {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
 .tk-why .cmd {
   display: inline-block;
   background: var(--mon-paper-2);

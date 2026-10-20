@@ -11,6 +11,7 @@ import {
   REQUIRED_PACKAGE_FILES,
   REQUIRED_PACKAGE_PREFIXES,
   validatePackageFiles,
+  validatePackedSize,
   validateReleaseIdentity,
   validateTarballIntegrity,
 } from './npm-package-contract.mjs';
@@ -23,13 +24,13 @@ function validFiles() {
 }
 
 test('normalizes npm pack array and keyed-object output', () => {
-  const metadata = { filename: 'pixel-agents-1.4.0.tgz', files: validFiles() };
+  const metadata = { filename: 'pixelmates-1.0.0.tgz', files: validFiles() };
   assert.equal(normalizePackMetadata([metadata]), metadata);
-  assert.equal(normalizePackMetadata({ 'pixel-agents@1.4.0': metadata }), metadata);
+  assert.equal(normalizePackMetadata({ 'pixelmates@1.0.0': metadata }), metadata);
 });
 
 test('extracts pack JSON after lifecycle build output', () => {
-  const metadata = [{ filename: 'pixel-agents-1.4.0.tgz', files: validFiles() }];
+  const metadata = [{ filename: 'pixelmates-1.0.0.tgz', files: validFiles() }];
   const output = `[generate-messages] built protocol\nHUSKY=0 skip install${JSON.stringify(metadata)}`;
   assert.deepEqual(parsePackJsonOutput(output), metadata);
 });
@@ -51,13 +52,17 @@ test('rejects source and preview files even when required files exist', () => {
     () => validatePackageFiles([...validFiles(), { path: 'dist/browser/index.html' }]),
     /forbidden package path: dist\/browser\/index\.html/,
   );
+  assert.throws(
+    () => validatePackageFiles([...validFiles(), { path: 'dist/webview/assets/demo.gif' }]),
+    /gif must not ship: dist\/webview\/assets\/demo\.gif/,
+  );
 });
 
 test('validates release tag, ref, repository, and monotonic version', () => {
   const manifest = {
-    name: 'pixel-agents',
+    name: 'pixelmates',
     version: '1.4.0',
-    repository: { url: 'https://github.com/pixel-agents-hq/pixel-agents' },
+    repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
   };
   assert.doesNotThrow(() =>
     validateReleaseIdentity({
@@ -98,6 +103,49 @@ test('validates release tag, ref, repository, and monotonic version', () => {
   );
 });
 
+test('rejects the upstream package name and a foreign repository', () => {
+  const base = {
+    releaseTag: 'v1.4.0',
+    ref: 'refs/tags/v1.4.0',
+    latestVersion: '1.0.2',
+  };
+  const manifest = {
+    name: 'pixelmates',
+    version: '1.4.0',
+    repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
+  };
+  assert.throws(
+    () => validateReleaseIdentity({ ...base, manifest: { ...manifest, name: 'pixel-agents' } }),
+    /Expected package name pixelmates/,
+  );
+  assert.throws(
+    () =>
+      validateReleaseIdentity({
+        ...base,
+        manifest: {
+          ...manifest,
+          repository: { url: 'https://github.com/pixel-agents-hq/pixel-agents' },
+        },
+      }),
+    /Expected repository/,
+  );
+});
+
+test('a never-published package has no latest to beat', () => {
+  assert.doesNotThrow(() =>
+    validateReleaseIdentity({
+      manifest: {
+        name: 'pixelmates',
+        version: '1.0.0',
+        repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
+      },
+      releaseTag: 'v1.0.0',
+      ref: 'refs/tags/v1.0.0',
+      latestVersion: null,
+    }),
+  );
+});
+
 test('publishes only absent versions and treats integrity safely', () => {
   assert.equal(getPublicationDecision('sha512-local', null), 'publish');
   assert.equal(getPublicationDecision('sha512-same', 'sha512-same'), 'skip');
@@ -105,8 +153,8 @@ test('publishes only absent versions and treats integrity safely', () => {
 });
 
 test('rejects a tarball changed after its metadata was created', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-agents-integrity-test-'));
-  const tarballPath = path.join(tmpDir, 'pixel-agents.tgz');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pixelmates-integrity-test-'));
+  const tarballPath = path.join(tmpDir, 'pixelmates.tgz');
   const verifiedIntegrity =
     'sha512-RkN76vtkA1+8p/GSGfbyKAGc1SvEWGcyy0e6CVFdcQKBmX1sAD93WjE7XaXvLvWCO8Q8zHEugymaUbvwb3dBXg==';
   try {
@@ -121,4 +169,9 @@ test('rejects a tarball changed after its metadata was created', () => {
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('rejects a tarball over the size ceiling', () => {
+  assert.doesNotThrow(() => validatePackedSize(1_100_000));
+  assert.throws(() => validatePackedSize(2 * 1024 * 1024 + 1), /exceeds the 2097152 byte ceiling/);
 });

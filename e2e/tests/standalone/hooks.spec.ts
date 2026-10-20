@@ -20,7 +20,6 @@ test.describe('Standalone / hooks', () => {
     standalone,
   }) => {
     await setSettings(page, {
-      alwaysShowLabels: true,
       watchAllSessions: true,
     });
     await standalone.drainMessages();
@@ -117,7 +116,7 @@ test.describe('Standalone / hooks consent', () => {
 
   function readConsentFrom(tmpHome: string): boolean {
     try {
-      const raw = fs.readFileSync(path.join(tmpHome, '.pixel-agents', 'config.json'), 'utf8');
+      const raw = fs.readFileSync(path.join(tmpHome, '.pixelmates', 'config.json'), 'utf8');
       const consent = (JSON.parse(raw) as { hooksConsent?: Record<string, string> }).hooksConsent;
       return consent?.claude === 'granted';
     } catch {
@@ -187,11 +186,9 @@ test.describe('Standalone / hooks consent', () => {
     await expect(dialog).toBeHidden();
   });
 
-  // The token boundary, at the browser level: a bare-URL session still watches
-  // the office but is never asked — its answer would be ignored
-  // (server/__tests__/httpServerWs.test.ts pins the wire half), so showing it
-  // the dialog would be a lie.
-  test('an untokened spectator page never sees the consent dialog @area:standalone', async ({
+  // The token boundary, at the browser level: a bare-URL page is refused at the socket (server/__tests__/httpServerWs.test.ts
+  // pins the wire half), so it never gets the office, let alone the consent dialog whose answer would be ignored.
+  test('an untokened page is refused the office and never sees the consent dialog @area:standalone', async ({
     page,
     standalone,
   }) => {
@@ -199,18 +196,17 @@ test.describe('Standalone / hooks consent', () => {
     const bareUrl = new URL(page.url());
     bareUrl.search = '';
 
-    const spectator = await page.context().newPage();
+    const bare = await page.context().newPage();
     try {
-      await spectator.goto(bareUrl.toString());
-      await expect(spectator.getByRole('button', { name: 'Settings' })).toBeVisible({
-        timeout: 30_000,
-      });
-      // Settle before the negative assertion: the dialog, were it coming,
-      // rides the webviewReady handshake that just completed.
-      await spectator.waitForTimeout(2_000);
-      await expect(spectator.getByRole('dialog')).toHaveCount(0);
+      await bare.goto(bareUrl.toString());
+      // Settle before the negative assertions: the office and the dialog, were they coming, ride the webviewReady
+      // handshake that a refused socket never completes.
+      await bare.waitForTimeout(3_000);
+      await expect(bare.getByText('Loading...')).toBeVisible();
+      await expect(bare.getByRole('button', { name: 'Settings' })).toHaveCount(0);
+      await expect(bare.getByRole('dialog')).toHaveCount(0);
     } finally {
-      await spectator.close();
+      await bare.close();
     }
   });
 

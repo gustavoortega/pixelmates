@@ -61,7 +61,7 @@ function readSettings(): Record<string, unknown> {
 
 /** The command string our installer writes, for the current fake homedir. */
 function ourCommand(): string {
-  return `node "${path.join(tmpBase, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+  return `node "${path.join(tmpBase, '.pixelmates', 'hooks', 'claude-hook.js')}"`;
 }
 
 /** Every command string across every event, flattened. */
@@ -309,7 +309,7 @@ describe('claudeHookInstaller', () => {
   it('removes only our command from an entry shared with a third-party hook', async () => {
     const settingsPath = path.join(tmpBase, '.claude', 'settings.json');
     const theirCommand = 'node /elsewhere/other-tool.js';
-    const ourCommand = `node "${path.join(tmpBase, '.pixel-agents', 'hooks', 'claude-hook.js')}"`;
+    const ourCommand = `node "${path.join(tmpBase, '.pixelmates', 'hooks', 'claude-hook.js')}"`;
     fs.writeFileSync(
       settingsPath,
       JSON.stringify({
@@ -347,7 +347,7 @@ describe('claudeHookInstaller', () => {
     expect(fs.readFileSync(backupPath, 'utf-8')).toBe(original);
 
     // A later modification must NOT refresh the backup: it preserves the
-    // pre-Pixel-Agents state, not the previous write.
+    // pre-pixelmates state, not the previous write.
     await uninstallHooks();
     expect(fs.readFileSync(backupPath, 'utf-8')).toBe(original);
   });
@@ -373,7 +373,7 @@ describe('claudeHookInstaller', () => {
   });
 
   // 8c-2. ...and later writes to a file OUR install created still take none.
-  //       The backup preserves the user's pre-Pixel-Agents file; when the only
+  //       The backup preserves the user's pre-pixelmates file; when the only
   //       content ever in the file is our own install, a backup enshrines our
   //       output as "the user's original". Observed in a fresh home: the first
   //       uninstall backed up the install's own 12 entries.
@@ -470,7 +470,7 @@ describe('claudeHookInstaller', () => {
     async (_case, backedUp, arg) => {
       const settingsPath = settingsPathFor();
       await installHooks();
-      const tee = path.join(tmpBase, '.pixel-agents', 'hooks', 'statusline-tee.js');
+      const tee = path.join(tmpBase, '.pixelmates', 'hooks', 'statusline-tee.js');
       const withStatusLine = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
       withStatusLine.statusLine = {
         type: 'command',
@@ -783,60 +783,54 @@ describe('claudeHookInstaller', () => {
     const ours = (p: string) => ({ matcher: '', hooks: [{ type: 'command', command: p }] });
 
     it.each([
-      ['unix path', 'node "/home/me/.pixel-agents/hooks/claude-hook.js"', true],
-      ['windows path', 'node "C:\\Users\\x\\.pixel-agents\\hooks\\claude-hook.js"', true],
-      ['unquoted unix path', 'node /home/me/.pixel-agents/hooks/claude-hook.js', true],
-      ['bare absolute path, no node', '/home/me/.pixel-agents/hooks/claude-hook.js', true],
+      ['unix path', 'node "/home/me/.pixelmates/hooks/claude-hook.js"', true],
+      ['windows path', 'node "C:\\Users\\x\\.pixelmates\\hooks\\claude-hook.js"', true],
+      ['unquoted unix path', 'node /home/me/.pixelmates/hooks/claude-hook.js', true],
+      ['bare absolute path, no node', '/home/me/.pixelmates/hooks/claude-hook.js', true],
       [
         'absolute node binary',
-        '/usr/local/bin/node /home/me/.pixel-agents/hooks/claude-hook.js',
+        '/usr/local/bin/node /home/me/.pixelmates/hooks/claude-hook.js',
         true,
       ],
       [
         'windows node binary',
-        'C:\\Program Files\\node.exe "C:\\U\\x\\.pixel-agents\\hooks\\claude-hook.js"',
+        'C:\\Program Files\\node.exe "C:\\U\\x\\.pixelmates\\hooks\\claude-hook.js"',
         true,
       ],
       // A RELATIVE path resolves against whatever directory Claude Code runs
       // in, so it names a project-local file that is almost certainly not ours
       // — and we always write an absolute one.
-      ['bare relative path', '.pixel-agents/hooks/claude-hook.js', false],
-      ['dot-slash relative path', './.pixel-agents/hooks/claude-hook.js', false],
-      ['relative path via node', 'node .pixel-agents/hooks/claude-hook.js', false],
-      ['legacy script name', 'node /home/me/.pixel-agents/pixel-agents-hook.js', true],
+      ['bare relative path', '.pixelmates/hooks/claude-hook.js', false],
+      ['dot-slash relative path', './.pixelmates/hooks/claude-hook.js', false],
+      ['relative path via node', 'node .pixelmates/hooks/claude-hook.js', false],
+      // Upstream Pixel Agents' scripts are another app's: found by hasUpstreamHooks, never ours to remove.
+      ['upstream script name', 'node /home/me/.pixelmates/pixel-agents-hook.js', false],
+      ['upstream hooks dir', 'node "/home/me/.pixel-agents/hooks/claude-hook.js"', false],
       // The accidental-collision case: both old substrings present, in
       // unrelated positions, in a path that is not ours at all.
-      ['foreign .pixel-agents-backup dir', 'node /opt/.pixel-agents-backup/claude-hook.js', false],
+      ['foreign .pixelmates-backup dir', 'node /opt/.pixelmates-backup/claude-hook.js', false],
       ['bare script name', 'node claude-hook.js', false],
       ['other tool', 'node /opt/other-tool/hook.js', false],
       // Token-boundary cases. Every one of these was classified as OURS by the
       // substring matcher, and uninstallHooks DELETED all of them.
-      ['suffixed .backup file', 'node /opt/.pixel-agents/hooks/claude-hook.js.backup', false],
-      ['suffixed .disabled file', 'node /opt/.pixel-agents/hooks/claude-hook.js.disabled', false],
-      [
-        'no separator before .pixel-agents',
-        'node /opt/evil.pixel-agents/hooks/claude-hook.js',
-        false,
-      ],
+      ['suffixed .backup file', 'node /opt/.pixelmates/hooks/claude-hook.js.backup', false],
+      ['suffixed .disabled file', 'node /opt/.pixelmates/hooks/claude-hook.js.disabled', false],
+      ['no separator before .pixelmates', 'node /opt/evil.pixelmates/hooks/claude-hook.js', false],
       ['legacy name without separator', 'node /opt/my-pixel-agents-hook.js', false],
-      ['legacy name with suffix', 'node /opt/.pixel-agents/pixel-agents-hook.js.bak', false],
+      ['legacy name with suffix', 'node /opt/.pixelmates/pixel-agents-hook.js.bak', false],
       // Our path appears, but not as the thing being RUN.
-      ['inside a comment', 'true # /opt/.pixel-agents/hooks/claude-hook.js', false],
+      ['inside a comment', 'true # /opt/.pixelmates/hooks/claude-hook.js', false],
       [
         'as a wrapper argument',
-        'wrapper --note=".pixel-agents/hooks/claude-hook.js" /usr/bin/x',
+        'wrapper --note=".pixelmates/hooks/claude-hook.js" /usr/bin/x',
         false,
       ],
-      [
-        'deeper path under ours',
-        'node /home/me/.pixel-agents/hooks/claude-hook.js/inner.js',
-        false,
-      ],
+      ['deeper path under ours', 'node /home/me/.pixelmates/hooks/claude-hook.js/inner.js', false],
       // Casing is normalized away (W3). On the case-insensitive volumes this
       // ships on (macOS, Windows) a differently-cased path is the SAME INODE as
       // our script and is genuinely firing, so reading it as foreign duplicated
       // it on reinstall and orphaned it on uninstall.
-      ['differently cased path', 'node "/home/X/.Pixel-Agents/Hooks/Claude-Hook.js"', true],
+      ['differently cased path', 'node "/home/X/.Pixelmates/Hooks/Claude-Hook.js"', true],
     ])('%s -> %s', async (_label, command, isOurs) => {
       const settingsPath = settingsPathFor();
       fs.writeFileSync(
@@ -849,11 +843,11 @@ describe('claudeHookInstaller', () => {
     });
 
     // Behavioral consequence of the old two-substring matcher: a third-party
-    // hook under a `.pixel-agents-backup` directory read as ours, so install
+    // hook under a `.pixelmates-backup` directory read as ours, so install
     // was skipped and uninstall DELETED it.
     it('never claims or deletes a foreign hook that merely contains both markers', async () => {
       const settingsPath = settingsPathFor();
-      const foreign = ours('node /opt/.pixel-agents-backup/claude-hook.js');
+      const foreign = ours('node /opt/.pixelmates-backup/claude-hook.js');
       fs.writeFileSync(
         settingsPath,
         JSON.stringify({
@@ -873,14 +867,14 @@ describe('claudeHookInstaller', () => {
     // settings.json — the same "we destroyed your config" class the whole
     // module exists to fix.
     it.each([
-      ['a .backup copy of our script', 'node /opt/.pixel-agents/hooks/claude-hook.js.backup'],
+      ['a .backup copy of our script', 'node /opt/.pixelmates/hooks/claude-hook.js.backup'],
       ['a disabled legacy script', 'node /opt/pixel-agents-hook.js.disabled'],
-      ['a shell comment mentioning our path', 'true # /opt/.pixel-agents/hooks/claude-hook.js'],
+      ['a shell comment mentioning our path', 'true # /opt/.pixelmates/hooks/claude-hook.js'],
       [
         'a wrapper naming our path in an argument',
-        'my-wrapper --note=".pixel-agents/hooks/claude-hook.js" /usr/bin/real-hook',
+        'my-wrapper --note=".pixelmates/hooks/claude-hook.js" /usr/bin/real-hook',
       ],
-      ['a lookalike directory', 'node /opt/evil.pixel-agents/hooks/claude-hook.js'],
+      ['a lookalike directory', 'node /opt/evil.pixelmates/hooks/claude-hook.js'],
       ['a lookalike legacy name', 'node /opt/my-pixel-agents-hook.js.bak'],
     ])('uninstall leaves %s in place', async (_label, command) => {
       const settingsPath = settingsPathFor();
@@ -899,7 +893,7 @@ describe('claudeHookInstaller', () => {
     // areHooksInstalled reported nothing installed.
     it('uninstall removes a differently-cased path to our own script', async () => {
       const settingsPath = settingsPathFor();
-      const cased = ours('node "/home/X/.Pixel-Agents/Hooks/Claude-Hook.js"');
+      const cased = ours('node "/home/X/.Pixelmates/Hooks/Claude-Hook.js"');
       fs.writeFileSync(settingsPath, JSON.stringify({ hooks: { Stop: [cased] } }));
 
       expect(areHooksInstalled()).toBe(true);
@@ -989,7 +983,7 @@ describe('claudeHookInstaller', () => {
   });
 
   // 9. copyHookScript copies file
-  it('copyHookScript copies to ~/.pixel-agents/hooks/', () => {
+  it('copyHookScript copies to ~/.pixelmates/hooks/', () => {
     // Create a mock extension path with dist/hooks/claude-hook.js
     const mockExtPath = path.join(tmpBase, 'mock-ext');
     const hookSrc = path.join(mockExtPath, 'dist', 'hooks');
@@ -998,7 +992,7 @@ describe('claudeHookInstaller', () => {
 
     copyHookScript(mockExtPath);
 
-    const dst = path.join(tmpBase, '.pixel-agents', 'hooks', 'claude-hook.js');
+    const dst = path.join(tmpBase, '.pixelmates', 'hooks', 'claude-hook.js');
     expect(fs.existsSync(dst)).toBe(true);
     expect(fs.readFileSync(dst, 'utf-8')).toBe('// mock hook script');
   });
@@ -1012,7 +1006,7 @@ describe('claudeHookInstaller', () => {
 
     copyHookScript(mockExtPath);
 
-    const dst = path.join(tmpBase, '.pixel-agents', 'hooks', 'claude-hook.js');
+    const dst = path.join(tmpBase, '.pixelmates', 'hooks', 'claude-hook.js');
     const stat = fs.statSync(dst);
     // Check owner execute bit
     expect(stat.mode & 0o100).toBeTruthy();
@@ -1028,7 +1022,7 @@ describe('claudeHookInstaller', () => {
     fs.writeFileSync(path.join(hookSrc, 'statusline-tee.js'), '// mock wrapper');
 
     expect(copyHookScript(mockExtPath)).toBe(true);
-    const dst = path.join(tmpBase, '.pixel-agents', 'hooks', 'statusline-tee.js');
+    const dst = path.join(tmpBase, '.pixelmates', 'hooks', 'statusline-tee.js');
     expect(fs.readFileSync(dst, 'utf-8')).toBe('// mock wrapper');
   });
 
@@ -1037,7 +1031,7 @@ describe('claudeHookInstaller', () => {
   //     nothing — the silent failure the reporter flagged.
   it('copyHookScript returns false when the source is missing', () => {
     const mockExtPath = path.join(tmpBase, 'mock-ext'); // no dist/hooks/claude-hook.js
-    const dst = path.join(tmpBase, '.pixel-agents', 'hooks', 'claude-hook.js');
+    const dst = path.join(tmpBase, '.pixelmates', 'hooks', 'claude-hook.js');
 
     expect(copyHookScript(mockExtPath)).toBe(false);
     expect(fs.existsSync(dst)).toBe(false);

@@ -19,7 +19,7 @@ describe('loadOrCreateToken', () => {
 
   it('on a fresh install creates an owner-only settings dir and token file it reads back', () => {
     // The settings dir does not exist before the first persist, which runs after start.
-    const dir = path.join(tmp, '.pixel-agents');
+    const dir = path.join(tmp, '.pixelmates');
     const token = loadOrCreateToken(dir);
 
     expect(loadOrCreateToken(dir)).toBe(token);

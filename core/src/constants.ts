@@ -12,9 +12,9 @@ export const HOOK_API_PREFIX = '/api/hooks';
 /** Ingress for the official usage limits a status line wrapper reads from its
  *  CLI (POST `${STATUSLINE_API_PREFIX}/:providerId`, same bearer token as hooks). */
 export const STATUSLINE_API_PREFIX = '/api/statusline';
-export const SERVER_JSON_DIR = '.pixel-agents';
+export const SERVER_JSON_DIR = '.pixelmates';
 export const SERVER_JSON_NAME = 'server.json';
-export const HOOK_SCRIPTS_DIR = '.pixel-agents/hooks';
+export const HOOK_SCRIPTS_DIR = '.pixelmates/hooks';
 
 // ── Display ──────────────────────────────────────────────────
 

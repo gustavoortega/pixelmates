@@ -32,7 +32,7 @@ describe('dist/uninstall.js', () => {
   const itBuilt = it.skipIf(!fs.existsSync(UNINSTALL) || process.platform === 'win32');
 
   itBuilt('removes our hooks and restores the status line the wrapper chained', () => {
-    const hooksDir = path.join(home, '.pixel-agents', 'hooks');
+    const hooksDir = path.join(home, '.pixelmates', 'hooks');
     const settingsPath = path.join(home, '.claude', 'settings.json');
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(

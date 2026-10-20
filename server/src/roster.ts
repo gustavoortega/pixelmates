@@ -2,7 +2,7 @@
  * Roster: a persistent crew of named members that agents take on while they live.
  *
  * Identity follows the member, not the agent id, so XP and the look survive restarts and /clear.
- * The file is shared by every Pixel Agents process on the machine (VS Code and standalone can run
+ * The file is shared by every pixelmates process on the machine (VS Code and standalone can run
  * together), so each write re-reads the file under a lockfile and applies this process's deltas on
  * top. Holds record which live process has which member; a hold whose pid is dead is free.
  *
@@ -438,7 +438,7 @@ export class RosterStore {
       return { ok: false };
     }
     if (!this.acquireLock()) {
-      console.warn('[Pixel Agents] Roster: lock busy, skipping write');
+      console.warn('[pixelmates] Roster: lock busy, skipping write');
       return { ok: false };
     }
     try {
@@ -471,7 +471,7 @@ export class RosterStore {
       }
       return { ok: true, value };
     } catch (err) {
-      console.error('[Pixel Agents] Roster: write failed:', err);
+      console.error('[pixelmates] Roster: write failed:', err);
       return { ok: false };
     } finally {
       this.releaseLock();
@@ -499,7 +499,7 @@ export class RosterStore {
       return { version: 1, members, holds };
     } catch (err) {
       // Keep the unreadable file for the user rather than silently overwriting their XP.
-      console.error('[Pixel Agents] Roster: unreadable file, starting fresh:', err);
+      console.error('[pixelmates] Roster: unreadable file, starting fresh:', err);
       try {
         fs.copyFileSync(this.filePath, `${this.filePath}.corrupt`);
       } catch {

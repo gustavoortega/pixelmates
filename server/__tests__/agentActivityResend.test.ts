@@ -328,6 +328,58 @@ describe('resendAgentActivity', () => {
     expect(sent).toEqual([{ type: 'agentStatus', id: 2, status: 'idle' }]);
   });
 
+  // K5: a reconnecting client is told why each waiting agent waits, and the question's text.
+  it('carries the wait reason and the question text on a reconnect', () => {
+    const store = new AgentStateStore();
+    store.set(
+      1,
+      createTestAgent({
+        id: 1,
+        isWaiting: true,
+        awaitingInput: true,
+        awaitingReason: 'question',
+        question: 'Which database?',
+        statusKey: 'waiting:input',
+        statusSince: 5_000,
+      }),
+    );
+    store.set(
+      2,
+      createTestAgent({
+        id: 2,
+        isWaiting: true,
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        question: 'left over',
+        statusKey: 'waiting:done',
+        statusSince: 4_000,
+      }),
+    );
+    const sent: Array<Record<string, unknown>> = [];
+    resendAgentActivity((m) => {
+      if (m.type === 'agentStatus') sent.push(m);
+    }, store);
+    expect(sent).toEqual([
+      {
+        type: 'agentStatus',
+        id: 1,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'question',
+        question: 'Which database?',
+        since: 5_000,
+      },
+      {
+        type: 'agentStatus',
+        id: 2,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        since: 4_000,
+      },
+    ]);
+  });
+
   it('sends exactly one status per agent, with the value its state implies', () => {
     const store = new AgentStateStore();
     store.set(1, createTestAgent({ id: 1, hadToolsInTurn: true }));

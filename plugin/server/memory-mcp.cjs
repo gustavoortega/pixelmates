@@ -27,7 +27,7 @@ var os = __toESM(require("os"));
 var readline = __toESM(require("readline"));
 
 // server/src/memory/constants.ts
-var SERVER_NAME = "pixel-agents-memory";
+var SERVER_NAME = "pixelmates-memory";
 var LOG_PREFIX = "[memory-mcp]";
 var SUPPORTED_PROTOCOL_VERSIONS = [
   "2025-11-25",
@@ -1745,7 +1745,7 @@ function createDispatcher(ctx, version) {
 console.log = () => void 0;
 console.info = () => void 0;
 console.debug = () => void 0;
-var VERSION = "1.4.1";
+var VERSION = "1.0.0";
 function log(line) {
   try {
     process.stderr.write(`${LOG_PREFIX} ${line}

@@ -18,7 +18,7 @@ function logOnce(err: unknown): void {
   const kind = (err as NodeJS.ErrnoException)?.code ?? (err as Error)?.name ?? 'unknown';
   if (loggedErrorKinds.has(kind)) return;
   loggedErrorKinds.add(kind);
-  console.error(`[Pixel Agents] Health tick failed (${kind}): ${(err as Error)?.message ?? err}`);
+  console.error(`[pixelmates] Health tick failed (${kind}): ${(err as Error)?.message ?? err}`);
 }
 
 /**

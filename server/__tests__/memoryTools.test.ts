@@ -821,9 +821,9 @@ describe('since last_update', () => {
     const delivered = env(21);
     h.writeSession(dir, delivered, [
       prompt(delivered, t1 - MINUTE, 'write the sprint update'),
-      call(delivered, t1, 'toolu_s1', 'Skill', { skill: 'anthropic-skills:sprint-update-as-tavo' }),
+      call(delivered, t1, 'toolu_s1', 'Skill', { skill: 'anthropic-skills:sprint-update' }),
       result(delivered, t1 + 1000, 'toolu_s1', {
-        toolUseResult: { success: true, commandName: 'anthropic-skills:sprint-update-as-tavo' },
+        toolUseResult: { success: true, commandName: 'anthropic-skills:sprint-update' },
       }),
       said(delivered, t1 + 2000, 'Draft ready.'),
       call(delivered, t1 + 5 * MINUTE, 'toolu_p1', 'Bash', {
@@ -849,7 +849,7 @@ describe('since last_update', () => {
     const t5 = h.now - 36 * HOUR;
     h.writeSession(dir, failedRun, [
       prompt(failedRun, t5 - MINUTE, 'sprint update'),
-      call(failedRun, t5, 'toolu_s5', 'Skill', { skill: 'sprint-update-as-tavo' }),
+      call(failedRun, t5, 'toolu_s5', 'Skill', { skill: 'sprint-update' }),
       result(failedRun, t5 + 1000, 'toolu_s5', {
         isError: true,
         content: 'Skill failed',
@@ -869,7 +869,7 @@ describe('since last_update', () => {
     const t3 = h.now - DAY;
     h.writeSession(dir, undelivered, [
       prompt(undelivered, t3 - MINUTE, 'sprint update'),
-      call(undelivered, t3, 'toolu_s3', 'Skill', { skill: 'sprint-update-as-tavo' }),
+      call(undelivered, t3, 'toolu_s3', 'Skill', { skill: 'sprint-update' }),
       result(undelivered, t3 + 1000, 'toolu_s3', { toolUseResult: { success: true } }),
       said(undelivered, t3 + 2000, 'Draft ready.'),
     ]);
@@ -877,7 +877,7 @@ describe('since last_update', () => {
     const t4 = h.now - 12 * HOUR;
     h.writeSession(h.projectDir('/Users/dev/billing'), elsewhere, [
       prompt(elsewhere, t4 - MINUTE, 'sprint update'),
-      call(elsewhere, t4, 'toolu_s4', 'Skill', { skill: 'sprint-update-as-tavo' }),
+      call(elsewhere, t4, 'toolu_s4', 'Skill', { skill: 'sprint-update' }),
       result(elsewhere, t4 + 1000, 'toolu_s4', { toolUseResult: { success: true } }),
       call(elsewhere, t4 + 2000, 'toolu_p4', 'Bash', { command: 'pbcopy < /tmp/u.txt' }),
       result(elsewhere, t4 + 3000, 'toolu_p4', { toolUseResult: bashOutput('') }),

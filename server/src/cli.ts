@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Standalone CLI entry point: `npx pixel-agents`
+ * Standalone CLI entry point: `npx pixelmates`
  *
  * Starts the Fastify server in standalone mode with SPA serving and WebSocket.
  * Loads all assets (PNGs -> SpriteData) on startup and caches in memory.
@@ -11,6 +11,7 @@
 import * as os from 'os';
 import * as path from 'path';
 
+import type { HookInstallOptions } from '../../core/src/provider.js';
 import { AgentRuntime } from './agentRuntime.js';
 import { AgentStateStore } from './agentStateStore.js';
 import {
@@ -28,6 +29,7 @@ import {
 } from './configPersistence.js';
 import { LAYOUT_FILE_DIR, MAX_PORT, MIN_PORT, ROSTER_FILE_NAME } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { migrateDataDir } from './migrateDataDir.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { RosterStore } from './roster.js';
 import { PixelAgentsServer } from './server.js';
@@ -39,7 +41,7 @@ import { UsageLimitsStore } from './usage/usageLimitsStore.js';
 // ── Argument parsing ──────────────────────────────────────────
 
 export interface CliArgs {
-  /** Unset -> the port the last run picked for itself (~/.pixel-agents/server-port),
+  /** Unset -> the port the last run picked for itself (~/.pixelmates/server-port),
    *  else an OS-assigned one; a saved port that is taken falls back to an
    *  OS-assigned one. --port picks a fixed one for this run only (busy is an
    *  error) and is never saved. */
@@ -90,7 +92,7 @@ export function parseArgs(argv: string[]): CliArgs {
     } else if (argv[i] === '--new-token') {
       args.newToken = true;
     } else if (argv[i] === '--help') {
-      console.log(`Usage: pixel-agents [options]
+      console.log(`Usage: pixelmates [options]
 
 Options:
   --port, -p <number>   Port to listen on (default: the last run's port, else an
@@ -99,7 +101,7 @@ Options:
                         accept loopback Host headers, use 0.0.0.0 behind a tunnel)
   --token <token>       Server token for this run (16-128 characters of A-Z a-z
                         0-9 . _ -). Default: the one saved in
-                        ~/.pixel-agents/server-token, created on first run
+                        ~/.pixelmates/server-token, created on first run
   --new-token           Replace the saved token with a new one; URLs carrying the
                         old token stop working
   --help                Show this help message`);
@@ -127,7 +129,7 @@ Options:
 
 /**
  * Copy the bundled scripts (hook script and status line wrapper) into
- * ~/.pixel-agents/hooks/, reporting failure.
+ * ~/.pixelmates/hooks/, reporting failure.
  *
  * Callers run this BEFORE installing the settings.json entries and abort when
  * it returns false: an entry whose command points at a missing script makes
@@ -136,7 +138,7 @@ Options:
  */
 function copyHookScriptOrReport(packageRoot: string, context = ''): boolean {
   if (copyHookScript(packageRoot)) return true;
-  console.error(`[Pixel Agents] Hooks NOT installed${context}: hook script missing.`);
+  console.error(`[pixelmates] Hooks NOT installed${context}: hook script missing.`);
   return false;
 }
 
@@ -147,9 +149,12 @@ async function main(): Promise<void> {
   try {
     args = parseArgs(process.argv.slice(2));
   } catch (err) {
-    console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[pixelmates] ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
+
+  // Before anything reads or creates ~/.pixelmates: the copy runs only while it has no config.
+  migrateDataDir();
 
   // dist/ contains both the CLI bundle and the assets/ + webview/ directories
   const distRoot = __dirname;
@@ -160,7 +165,7 @@ async function main(): Promise<void> {
   // External asset directories are merged at startup too, so directories added
   // in a previous session survive a restart. buildAssetCache is the shared
   // loader used by both the standalone server and the VS Code adapter.
-  console.log('[Pixel Agents] Loading assets...');
+  console.log('[pixelmates] Loading assets...');
   const assetCache: AssetCache = await buildAssetCache(
     distRoot,
     readConfig().externalAssetDirectories,
@@ -169,14 +174,14 @@ async function main(): Promise<void> {
   const petCount = assetCache.pets?.pets.length ?? 0;
   const furnitureCount = assetCache.furniture?.catalog.length ?? 0;
   console.log(
-    `[Pixel Agents] Assets loaded: ${charCount} characters, ${petCount} pets, ${furnitureCount} furniture items`,
+    `[pixelmates] Assets loaded: ${charCount} characters, ${petCount} pets, ${furnitureCount} furniture items`,
   );
 
   // ── Store + adapter (shared settings + standalone-scoped agents/seats) ──
   const store = new AgentStateStore();
   const adapter = new FileStateAdapter({ namespace: 'standalone' });
   store.setAdapter(adapter);
-  // One crew for every Pixel Agents process on this machine (VS Code shares the same file).
+  // One crew for every pixelmates process on this machine (VS Code shares the same file).
   const roster = new RosterStore({
     filePath: path.join(os.homedir(), LAYOUT_FILE_DIR, ROSTER_FILE_NAME),
   });
@@ -222,7 +227,11 @@ async function main(): Promise<void> {
     // hooks when the user toggles in the UI (or answers the consent ask).
     // Captures config from the outer scope after server.start().
     let currentConfig: { port: number; token: string } | null = null;
-    const onSetHooksEnabled = async (providerId: string, enabled: boolean): Promise<void> => {
+    const onSetHooksEnabled = async (
+      providerId: string,
+      enabled: boolean,
+      options?: HookInstallOptions,
+    ): Promise<void> => {
       if (!currentConfig) return;
       const provider = hookProviderById(providerId);
       if (!provider) return; // unknown id: nothing to install into
@@ -240,18 +249,19 @@ async function main(): Promise<void> {
           await provider.installHooks(
             `http://127.0.0.1:${currentConfig.port}`,
             currentConfig.token,
+            options,
           );
         } catch (err) {
-          console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+          console.error(`[pixelmates] ${err instanceof Error ? err.message : String(err)}`);
           return;
         }
-        console.log('[Pixel Agents] Hooks installed (user toggle)');
+        console.log('[pixelmates] Hooks installed (user toggle)');
       } else {
         try {
           await provider.uninstallHooks();
-          console.log('[Pixel Agents] Hooks uninstalled (user toggle)');
+          console.log('[pixelmates] Hooks uninstalled (user toggle)');
         } catch (err) {
-          console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+          console.error(`[pixelmates] ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     };
@@ -290,7 +300,7 @@ async function main(): Promise<void> {
           sprites: Object.fromEntries(furniture.sprites),
         });
       }
-      console.log('[Pixel Agents] Assets reloaded (external directory change)');
+      console.log('[pixelmates] Assets reloaded (external directory change)');
     };
 
     const config = await server.start({
@@ -339,21 +349,21 @@ async function main(): Promise<void> {
       }
       if (!consent) {
         console.log(
-          '[Pixel Agents] Hooks not installed: modifying ~/.claude/settings.json needs one-time approval — open the URL below to review and approve it.',
+          '[pixelmates] Hooks not installed: modifying ~/.claude/settings.json needs one-time approval — open the URL below to review and approve it.',
         );
       } else if (copyHookScriptOrReport(packageRoot)) {
         try {
           await claudeProvider.installHooks(`http://127.0.0.1:${config.port}`, config.token);
-          console.log('[Pixel Agents] Hooks installed');
+          console.log('[pixelmates] Hooks installed');
         } catch (err) {
-          console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
+          console.error(`[pixelmates] ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     } else {
       // Without this line, a persisted hooks-off makes startup skip the entire
       // consent/install flow with zero output — indistinguishable from a bug.
       console.log(
-        '[Pixel Agents] Hooks disabled — enable "Instant Detection (Hooks)" in the UI settings to install them.',
+        '[pixelmates] Hooks disabled — enable "Instant Detection (Hooks)" in the UI settings to install them.',
       );
     }
 
@@ -365,7 +375,7 @@ async function main(): Promise<void> {
     const dirs = claudeProvider.getSessionDirs?.(cwd);
     if (dirs && dirs[0]) {
       const projectDir = dirs[0];
-      console.log(`[Pixel Agents] Scanning project dir: ${projectDir}`);
+      console.log(`[pixelmates] Scanning project dir: ${projectDir}`);
       runtime.startProjectScan(projectDir);
       runtime.startExternalScanning(projectDir);
       runtime.startStaleCheck();
@@ -380,7 +390,7 @@ async function main(): Promise<void> {
     const displayHost =
       args.host === '0.0.0.0' || args.host === '::' || args.host === '' ? '127.0.0.1' : args.host;
     console.log(
-      `\n  Pixel Agents server running at http://${displayHost}:${config.port}/?token=${config.token}\n`,
+      `\n  pixelmates server running at http://${displayHost}:${config.port}/?token=${config.token}\n`,
     );
 
     // ── Graceful shutdown ──

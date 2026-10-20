@@ -66,7 +66,7 @@ exports.run = async () => {
   if (!extension.isActive) throw new Error('Packaged extension did not activate');
   await vscode.commands.executeCommand('pixel-agents.showPanel');
 
-  const registryDir = path.join(os.homedir(), '.pixel-agents', 'servers');
+  const registryDir = path.join(os.homedir(), '.pixelmates', 'servers');
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     try {

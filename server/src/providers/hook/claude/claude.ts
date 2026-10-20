@@ -6,6 +6,7 @@ import * as path from 'path';
 import { normalizeProjectPath } from '../../../../../core/src/normalizeProjectPath.js';
 import type {
   AgentEvent,
+  HookInstallOptions,
   HookProvider,
   LoopEvent,
   ModelTier,
@@ -22,12 +23,17 @@ import {
 import { recordTimestampMs } from '../../../contextUsage.js';
 import {
   areHooksInstalled as installerAreHooksInstalled,
+  hasUpstreamHooks,
   installHooks as installerInstallHooks,
   uninstallHooks as installerUninstallHooks,
 } from './claudeHookInstaller.js';
 import { claudeTeamProvider } from './claudeTeamProvider.js';
 import { createClaudeTranscriptUsage } from './claudeUsage.js';
-import { CONSENT_DISCLOSURE, CONSENT_INSTALL_HEADLINE } from './consentCopy.js';
+import {
+  CONSENT_DISCLOSURE,
+  CONSENT_INSTALL_HEADLINE,
+  LEGACY_REPLACE_LABEL,
+} from './consentCopy.js';
 import {
   CLAUDE_LARGE_CONTEXT_WINDOW,
   CLAUDE_MODEL_TIERS,
@@ -236,6 +242,11 @@ function normalizeHookEvent(
   return { ...normalized, agentId };
 }
 
+/** The ended tool's name, when the payload carries one. */
+function toolNameOf(raw: Record<string, unknown>): { toolName?: string } {
+  return typeof raw.tool_name === 'string' && raw.tool_name ? { toolName: raw.tool_name } : {};
+}
+
 function normalizeSessionEvent(
   eventName: string,
   sessionId: string,
@@ -261,10 +272,13 @@ function normalizeSessionEvent(
     }
 
     case 'PostToolUse':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current' } };
+      return { sessionId, event: { kind: 'toolEnd', toolId: 'current', ...toolNameOf(raw) } };
 
     case 'PostToolUseFailure':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current', failed: true } };
+      return {
+        sessionId,
+        event: { kind: 'toolEnd', toolId: 'current', ...toolNameOf(raw), failed: true },
+      };
 
     case 'Stop':
       return { sessionId, event: { kind: 'turnEnd' } };
@@ -314,9 +328,10 @@ function normalizeSessionEvent(
         return { sessionId, event: { kind: 'permissionRequest' } };
       }
       if (notificationType === 'idle_prompt') {
-        // idle_prompt = Claude went idle waiting on the user, not just a finished
-        // turn. awaitingInput drives the "Waiting for input" label (vs "Done" for Stop).
-        return { sessionId, event: { kind: 'turnEnd', awaitingInput: true } };
+        // idle_prompt fires after a finished turn sat idle, and equally while a question is
+        // still unanswered. It says nothing about a question by itself: that is the
+        // question tool's own PreToolUse, so this is only the quiet "finished, waiting".
+        return { sessionId, event: { kind: 'turnEnd', idle: true } };
       }
       return null;
     }
@@ -368,8 +383,16 @@ function normalizeSessionEvent(
 
 /** Async so an installer throw (e.g. unparseable settings.json) always reaches
  *  callers as a rejection they can surface, never a sync throw. */
-async function installHooks(_serverUrl: string, _authToken: string): Promise<void> {
-  await installerInstallHooks();
+async function installHooks(
+  _serverUrl: string,
+  _authToken: string,
+  options?: HookInstallOptions,
+): Promise<void> {
+  await installerInstallHooks(options);
+}
+
+function legacyReplaceLabel(): string | null {
+  return hasUpstreamHooks() ? LEGACY_REPLACE_LABEL : null;
 }
 
 async function uninstallHooks(): Promise<void> {
@@ -542,12 +565,13 @@ export function turnSignal(record: unknown): TurnSignal {
   if (r.type === 'assistant') {
     if (typeof content === 'string') return stamp(content.trim() ? 'textAnswer' : 'ignore');
     if (!Array.isArray(content) || content.length === 0) return stamp('ignore');
-    const blocks = content as Array<{ type?: string; id?: string; name?: string }>;
+    const blocks = content as Array<{ type?: string; id?: string; name?: string; input?: unknown }>;
     const toolUses = blocks.filter((b) => b.type === 'tool_use');
     if (toolUses.length > 0) {
       return stamp('toolUse', {
         toolUseIds: toolUses.flatMap((b) => (b.id ? [b.id] : [])),
         toolNames: toolUses.map((b) => b.name ?? ''),
+        toolInputs: toolUses.map((b) => b.input),
       });
     }
     if (blocks.some((b) => b.type === 'text')) return stamp('textAnswer');
@@ -957,6 +981,7 @@ export const claudeProvider: HookProvider = {
   uninstallHooks,
   areHooksInstalled,
   consentDisclosure,
+  legacyReplaceLabel,
 
   formatToolStatus,
   permissionExemptTools: new Set(['Task', 'Agent', 'AskUserQuestion']),

@@ -11,7 +11,13 @@ export {
   TASK_DESCRIPTION_DISPLAY_MAX_LENGTH,
 } from './constants.js';
 export type { ClientMessage, FurnitureAssetMessage, ServerMessage } from './messages.js';
-export type { AgentEvent, HookProvider, ModelTier, SessionMetaFacts } from './provider.js';
+export type {
+  AgentEvent,
+  HookInstallOptions,
+  HookProvider,
+  ModelTier,
+  SessionMetaFacts,
+} from './provider.js';
 export type {
   AgentMeta,
   ColorValue,
