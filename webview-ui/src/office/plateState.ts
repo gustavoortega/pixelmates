@@ -6,7 +6,12 @@
  */
 
 import { TAG_STATE_MAX_CHARS } from '../constants.js';
-import { extractToolName, isReadingToolName, isSubagentToolName } from './toolUtils.js';
+import {
+  extractToolName,
+  isReadingToolName,
+  isSubagentToolName,
+  type NameplateContent,
+} from './toolUtils.js';
 
 const MIN_MS = 60_000;
 
@@ -162,4 +167,33 @@ export function tagStateText(s: PlateState, now: number): string | null {
 /** The alert tab's text: the glyph, and the minutes when known. */
 export function alertText(a: PlateAlert, now: number): string {
   return a.since === null ? a.glyph : `${a.glyph} ${formatSpan(now - a.since)}`;
+}
+
+/**
+ * The README scene's two-line plate (`&text=1.25`, dev only): line 1 `Lv12 Ada`, line 2 what the
+ * agent is doing in words a stranger reads (`editing`, `› git commit`, `? 3m needs you`). The task
+ * subtitle and the state beside the name are dropped. A tool status that starts with a gerund
+ * (`Editing checkout.ts`) gives its first word, so an Edit reads `editing`, not the tag's `writing`.
+ */
+export function sceneTwoLinePlate(
+  plate: NameplateContent,
+  level: number | undefined,
+  toolStatus: string | null,
+  now: number,
+): NameplateContent {
+  const s = plate.state;
+  let line2: string | null = null;
+  if (s?.kind === 'alert') line2 = `${alertText(s.alert, now)} needs you`;
+  else if (s?.kind === 'cmd') line2 = `\u203A ${s.cmd}`;
+  else if (s?.kind === 'verb') {
+    const first = toolStatus?.split(/\s+/)[0].toLowerCase() ?? '';
+    line2 = /^[a-z]+ing$/.test(first) ? first : s.verb;
+  } else if (s?.kind === 'idle') line2 = tagStateText(s, now);
+  else if (s) line2 = stateText(s, now);
+  return {
+    ...plate,
+    name: level === undefined ? plate.name : `Lv${level} ${plate.name}`,
+    state: null,
+    sub: line2 ? [{ text: line2, pv: false }] : null,
+  };
 }

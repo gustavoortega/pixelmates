@@ -1,125 +1,84 @@
-<h1 align="center">pixelmates</h1>
+# pixelmates
+Your Claude Code sessions as a pixel office. The crew keeps its names and levels between restarts, and a lit desk means a session is waiting on you.
+
+```
+npx pixelmates
+```
 
 <p align="center">
-  <img src="docs/images/hero.png" alt="Four agents in the Studio room: one typing with an XP pop, one reading, one under a storm cloud, one napping">
+  <img src="docs/images/hero.gif" alt="A character commits and opens a PR, a +120 pop shows and its level rises; another desk lights up" width="880">
 </p>
 
-Your Claude Code sessions as a pixel office. Each session is a character at a desk: it types while the agent works, reads or naps while it waits for you, and levels up as it ships.
+pixelmates is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). The engine, the hooks and the layout editor are his work; the art is redrawn by code in this fork.
 
-This is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). The engine, hooks and layout editor come from upstream. The differences are below.
+## Install and run
 
-## What this fork changes
+Open the URL `npx pixelmates` prints. The token in it is a secret. The server binds 127.0.0.1 and keeps its roster, layout, token and port in `~/.pixelmates/`.
 
-**Art.** Every sprite is drawn by code in `scripts/cozy-art` at 2x density: 12 characters, 41 furniture sprites, floors, walls, rugs, pets. No paid asset pack. `npm run cozy:assets` regenerates them byte for byte.
+If you say yes at the consent prompt, it also adds a hook entry to `~/.claude/settings.json`, backed up once to `settings.json.pixelmates.backup`. Undo it with "Instant Detection (Hooks)" in Settings.
 
-**A crew that remembers.** Sessions claim a member from `~/.pixelmates/roster.json` and keep its name, look and XP across restarts. XP pays for real work, read from the session's own transcript: a commit +60 (at most 3 per turn, an amend pays nothing), a PR created +120, a PR merged +200, tests going green after an edit +40 (at most once per turn). Turns, tool calls and sub-agents pay nothing, and a session without a transcript (a hooks-only provider) stays at its level. Level N to N+1 costs `round(100 * N^1.5)`.
+Needs Node.js 20+.
 
-**Idle looks idle.** Status comes from the tail of the transcript, so a session that finished an hour ago does not sit there typing. Waiting agents read a book, nap after 10 minutes, or walk to the lounge for coffee. Sub-agents show up as gray helpers next to their parent.
+## Coming from Pixel Agents
 
-**Rooms per project.** Map workspace folders to Areas and each project gets its own room. The camera frames the rooms where someone is working.
+Your office is copied from `~/.pixel-agents` on first run; nothing there is changed. Pixel Agents hooks are replaced only if you tick "Replace Pixel Agents hooks" in the consent dialog. If you keep both, uninstall pixelmates first, then Pixel Agents.
 
-**Model at a glance.** Haiku, Sonnet, Opus and Fable each get a badge color, an accessory and a desk companion (bird, cat, owl, dragon).
+## Who needs you
 
-**Token usage.** The Usage panel ranks rooms and sessions by tokens in the current 5-hour block and the week, weighted by cost. Budgets are optional.
+<img src="docs/images/needs-you.gif" alt="A question ticket slides into the rail with the question text, and the asking agent's desk lights up" width="880">
 
-**Official limits.** Turn on "Claude status line (official limits)" in Settings to see Claude Code's own 5-hour and weekly usage in the Usage panel and the HUD, with the pace you are on. It wraps your status line command, which keeps running unchanged, and sends only those two numbers to the local server. macOS and Linux for now.
+Enter inspects, the arrow keys select, P masks session text. A session that is stuck, looping or stalled is named in the rail.
 
-**Tripwires.** 14 rules flag risky tool calls with an alarm on the agent: credential and key reads, `curl | sh`, force pushes, `rm -rf ~`, cloud and cluster writes, tampering with the hooks. Matched text never leaves the local server. See [docs/tripwires.md](docs/tripwires.md).
+## Privacy
 
-**Who needs a look.** A character smokes when its tests keep failing with no edit in between, or when it repeats the same call four times; a pause mark means its turn has been silent for 10 minutes; it goes gray when its Claude Code process is gone. Hover it for the reason. Gray external sessions leave after 5 minutes and come back if resumed.
+<img src="docs/images/privacy.png" alt="Left: rail with text. Right: the same rail after P, text masked" width="880">
 
-**Day and night.** Light follows your clock: window light in the morning, a darker room at night lit by the lamp, the active monitors and the fairy lights.
+The MCP reads transcripts on this machine and redacts secrets. pixelmates sends nothing off the machine; what the MCP returns reaches Claude like any other tool result.
 
-**Security fixes over upstream.** The standalone WebSocket requires the session token. On a loopback bind the server refuses any `Host` that is not `127.0.0.1`, `localhost` or `::1`, which blocks DNS rebinding. Bash activity shows the program name, not the full command line.
+## A crew that remembers
 
-## Run it
+Each session is a named character that keeps its level across restarts. XP comes only from what your transcripts prove: commit +60, PR created +120, PR merged +200, tests green after an edit +40.
 
-Requirements: Node.js 20+, [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Turns, tool calls and sub-agents pay nothing. `roster.json` holds counts only.
 
-```bash
-git clone https://github.com/gustavoortega/pixelmates.git
-cd pixelmates
-npm install
-npm run build
-node dist/cli.js --host 127.0.0.1
+## Every session on one screen
+
+<img src="docs/images/inspector.png" alt="Inspector sheet for one session" width="440">
+
+Context, model, branch, cost, helpers and workflow phases. Tripwires are alerts, they block nothing.
+
+## Ask your own history
+
 ```
-
-Open the URL it prints. It carries a `?token=` that gives full control of the office, including installing the Claude Code hooks, so treat it as a password. The first run asks before it touches `~/.claude/settings.json`.
-
-The token is saved in `~/.pixelmates/server-token` and the port the server picked in `~/.pixelmates/server-port`, so the URL keeps working after a restart and an open tab reconnects on its own. If that port is taken, the server uses another one for that run and tries the saved one again next time. The saved token is a long-lived password: `node dist/cli.js --new-token` replaces it and every URL with the old one stops working; under `--host 0.0.0.0`, rotate once you have shared the URL. `--token <token>` uses a token for a single run and leaves the saved one alone.
-
-Keep the default bind. `--host 0.0.0.0` puts the office and its token-gated socket on your network.
-
-For VS Code, open the repo and press F5. The extension is not published.
-
-### Layout
-
-A fresh install opens the cozy office (Studio, Lab, Den, a lounge and a cat). If you already have `~/.pixelmates/layout.json`, it is kept. To switch to the new office, back it up and delete it:
-
-```bash
-mv ~/.pixelmates/layout.json ~/.pixelmates/layout.json.bak
-```
-
-Click **Layout** to edit rooms, furniture, rugs and Areas.
-
-## Memory for Claude (MCP)
-
-The plugin in `plugin/` gives Claude Code a read-only memory of your past sessions on this machine. Claude can answer "what did I do this week" for a sprint update, "did I already look into X", and "is another session editing this file right now", with four tools: `recent_work`, `find_past_work`, `active_now` and `recent_work_all_projects`.
-
-How it treats your transcripts:
-
-- It reads `~/.claude/projects` when a tool is called and keeps nothing. One stdio process per session, no network, no listener.
-- The project tools read only the transcripts of the working directory. The all-projects tool asks you on every call.
-- It returns prompts you typed, final answers, titles, commits, PRs, file paths and test verdicts. Tool output, tool inputs and thinking never leave the transcript.
-- Every string is redacted for secrets before it is returned, and search runs on the redacted text.
-- Its log on stderr carries counts only.
-
-Install:
-
-```bash
 claude plugin marketplace add gustavoortega/pixelmates
 claude plugin install pixelmates@pixelmates
 ```
 
-From a clone, for one session: `claude --plugin-dir ./plugin`.
+- `recent_work`: this project's sessions since a date.
+- `find_past_work`: did I already look into X.
+- `active_now`: sessions active in the last 10 minutes.
+- `recent_work_all_projects`: `recent_work` across a directory; asks you every call.
 
-Plugins cannot ship permission rules, so every call prompts until you allow the three project tools in `~/.claude/settings.json`:
+Ask "what did I ship this week?" and get sessions with title, outcome, commits and PRs.
 
-```json
-{
-  "permissions": {
-    "allow": [
-      "mcp__plugin_pixelmates_memory__recent_work",
-      "mcp__plugin_pixelmates_memory__find_past_work",
-      "mcp__plugin_pixelmates_memory__active_now"
-    ]
-  }
-}
-```
+## Why not just agent view?
 
-Never allow `recent_work_all_projects`: it reads every project under a directory, and the prompt is the point.
+Claude Code's agent view already lists background sessions that need input and lets you reply there. pixelmates does not replace it. It also covers sessions in your foreground terminals, which agent view shows only after you background them, flags sessions that are stuck or looping, and keeps a crew that earns levels. If a list is enough, use agent view.
 
-The office app is separate in v1: the plugin neither starts it nor installs its hooks.
+## Status
+
+A young fork with few users. File issues at [github.com/gustavoortega/pixelmates](https://github.com/gustavoortega/pixelmates/issues).
 
 ## Development
 
-```bash
-npm run check-types
-npm run lint
-npm test
+```
+git clone https://github.com/gustavoortega/pixelmates.git
+cd pixelmates && npm install && npm run build
+node dist/cli.js --host 127.0.0.1
 ```
 
-The hero image comes from a staged scene in the dev server:
+Dev scenes: `cd webview-ui && npx vite --host 127.0.0.1 --port 5199`, then open `http://127.0.0.1:5199/?scene=hero&hud=0` or `?scene=monitor`.
 
-```bash
-cd webview-ui && npx vite --host 127.0.0.1 --port 5199
-# open http://127.0.0.1:5199/?scene=hero&hud=0
-```
+## Credits and license
 
-`npm run e2e:perf` measures what the dev scenes cost per second (frames drawn, animation frames requested, main-thread time): `?scene=hero`, the default mock and `?scene=empty`, an office where nothing moves.
-
-[CLAUDE.md](CLAUDE.md) documents the architecture, [docs/cozy-art.md](docs/cozy-art.md) the art generator.
-
-## License
-
-MIT, same as upstream. See [LICENSE](LICENSE).
+Built on [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). Font: FS Pixel Sans by NZWStudios2024 ([SIL OFL 1.1](webview-ui/public/fonts/OFL.txt)). [LICENSE](LICENSE).

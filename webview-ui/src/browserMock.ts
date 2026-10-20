@@ -23,6 +23,7 @@ import type {
   PetSpriteFrames,
 } from '../../core/src/assets/types.ts';
 import {
+  freezeHeroOffice,
   HERO_LAYOUT_PATH,
   heroMessages,
   type HeroOffice,
@@ -30,9 +31,11 @@ import {
   heroZoomFor,
   monitorHelperStart,
   monitorMessages,
+  type MonitorSeating,
   parseHeroScene,
   parseMonitorScene,
   seatHeroAgents,
+  seatMonitorAlan,
   startHeroStage,
   startMonitorStage,
 } from './heroScene.ts';
@@ -250,7 +253,7 @@ export async function initBrowserMock(): Promise<void> {
  * VS Code mode, the server/extension sends all state over the transport.
  */
 export function dispatchMockMessages(host?: {
-  office: HeroOffice;
+  office: HeroOffice & MonitorSeating;
   /** Fix the camera at this zoom (fit-to-activity stops). */
   setZoom: (zoom: number) => void;
 }): void {
@@ -287,8 +290,8 @@ export function dispatchMockMessages(host?: {
     type: 'settingsLoaded',
     soundEnabled: false,
     extensionVersion: '1.3.0',
-    // The scene gets no "what's new" toast.
-    lastSeenVersion: hero ? '1.3' : '1.2',
+    // The scene gets no "what's new" toast (a frozen scene gets none either, hero or monitor).
+    lastSeenVersion: hero || monitor?.freeze ? '1.3' : '1.2',
     // Fairy lights twinkle at night with the lighting on: the empty scene keeps it off.
     ...(empty ? { cozyLighting: false } : {}),
   });
@@ -298,50 +301,62 @@ export function dispatchMockMessages(host?: {
     heroStaged = true;
     seatHeroAgents(host.office);
     for (const msg of heroMessages()) dispatch(msg);
-    startHeroStage(host.office, dispatch);
+    if (hero.options.freeze) freezeHeroOffice(host.office);
+    startHeroStage(host.office, dispatch, Date.now, hero.options);
     const fit = (): void =>
       host.setZoom(
-        heroZoomFor(
-          host.office.getLayout(),
-          { width: window.innerWidth, height: window.innerHeight },
-          window.devicePixelRatio || 1,
-        ),
+        hero.options.zoom ??
+          heroZoomFor(
+            host.office.getLayout(),
+            { width: window.innerWidth, height: window.innerHeight },
+            window.devicePixelRatio || 1,
+          ),
       );
     fit();
     window.addEventListener('resize', fit);
-    if (!hero.options.hud) hideHud();
+    hideHud(hero.options);
   }
 
   if (monitor && host && !monitorStaged) {
     monitorStaged = true;
-    const { baseMs, at } = startMonitorStage();
+    const { baseMs, at } = startMonitorStage(Date.now, monitor.clock);
+    seatMonitorAlan(host.office);
     // Caught up first, as after a real handshake: from here a helper the page sees spawn gets a
     // start, so the inspector's rows count minutes from each helper's own start time.
     dispatch({ type: 'handshakeDone' });
-    for (const msg of monitorMessages(baseMs)) {
+    for (const msg of monitorMessages(baseMs, monitor)) {
       const startedAt = monitorHelperStart(msg, baseMs);
       if (startedAt === undefined) dispatch(msg);
       else at(startedAt, () => dispatch(msg));
     }
     // The last agentCreated selects its agent; the scene opens on the whole office.
     host.office.selectedAgentId = null;
-    if (!monitor.hud) hideHud();
+    if (monitor.freeze) host.office.frozen = true;
+    hideHud(monitor);
   }
 
   console.log('[BrowserMock] Messages dispatched');
 }
 
-/** `&hud=0`: the scene is a screenshot, so the clock, the bottom bar, the status badge and the monitor's
- *  rail and sheet stay out of it. */
-function hideHud(): void {
-  const style = document.createElement('style');
-  style.textContent =
-    [
+/**
+ * `&hud=0`: the scene is a screenshot, so the clock, the bottom bar, the status badge and the monitor's
+ * rail and sheet stay out of it. `&hud=office` keeps the rail and the sheet and drops the rest.
+ * `&freeze=1` alone drops the connection pill, which a recording must never catch mid-connect.
+ */
+function hideHud(o: Pick<HeroSceneOptions, 'hud' | 'hudOffice' | 'freeze'>): void {
+  const hidden: string[] = [];
+  if (!o.hud) {
+    hidden.push(
       '[data-testid="stage-clock"]',
       '[data-testid="bottom-toolbar"]',
       '[data-testid="connection-indicator"]',
-      '[data-testid="monitor-rail"]',
-      '[data-testid="monitor-sheet"]',
-    ].join(', ') + ' { display: none !important; }';
+    );
+    if (!o.hudOffice) hidden.push('[data-testid="monitor-rail"]', '[data-testid="monitor-sheet"]');
+  } else if (o.freeze) {
+    hidden.push('[data-testid="connection-indicator"]');
+  }
+  if (hidden.length === 0) return;
+  const style = document.createElement('style');
+  style.textContent = hidden.join(', ') + ' { display: none !important; }';
   document.head.appendChild(style);
 }

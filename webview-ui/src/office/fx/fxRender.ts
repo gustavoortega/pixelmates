@@ -113,17 +113,26 @@ function headAnchor(ch: Character, ox: number, oy: number, zoom: number): { x: n
   );
 }
 
+let stormScale = 1;
+
+/** Dev-only (the README hero scene): draws the storm cloud this many times bigger; 0 draws none. */
+export function setSceneStormScale(scale: number): void {
+  stormScale = scale;
+}
+
 /** Device-px box of the storm cloud: 5 x 4 cells standing FX_WEATHER_RISE_PX above `anchorY`. */
 export function stormCloudRect(
   anchorX: number,
   anchorY: number,
   zoom: number,
+  scale = 1,
 ): { x: number; y: number; w: number; h: number } {
+  const cell = zoom * scale;
   return {
-    x: anchorX - Math.floor((5 * zoom) / 2),
-    y: anchorY - (4 + FX_WEATHER_RISE_PX) * zoom,
-    w: 5 * zoom,
-    h: 4 * zoom,
+    x: anchorX - Math.floor((5 * cell) / 2),
+    y: anchorY - 4 * cell - FX_WEATHER_RISE_PX * zoom,
+    w: 5 * cell,
+    h: 4 * cell,
   };
 }
 
@@ -200,23 +209,24 @@ export function renderFx(
 
   for (const ch of characters) {
     const alpha = fx.weather.stormAlpha(ch.id, fx.nowMs);
-    if (alpha === null) continue;
+    if (alpha === null || stormScale === 0) continue;
     const anchor = weatherAnchor(ch, fx, ox, oy, zoom);
-    const { x: left, y: top } = stormCloudRect(anchor.x, anchor.y, zoom);
+    const cell = zoom * stormScale;
+    const { x: left, y: top } = stormCloudRect(anchor.x, anchor.y, zoom, stormScale);
     ctx.globalAlpha = alpha;
     for (const [c, r, shade] of CLOUD_CELLS) {
       ctx.fillStyle = shade ? FX_STORM_CLOUD_SHADE : FX_STORM_CLOUD_COLOR;
-      ctx.fillRect(left + c * zoom, top + r * zoom, zoom, zoom);
+      ctx.fillRect(left + c * cell, top + r * cell, cell, cell);
     }
     ctx.fillStyle = FX_RAIN_COLOR;
     const age = fx.weather.stormAge(ch.id, fx.nowMs);
     for (let i = 0; i < FX_RAIN_DROPS; i++) {
       const phase = ((age / FX_RAIN_PERIOD_MS + i / FX_RAIN_DROPS) % 1) * 4;
       // Drops fall on every other column, clear of the bolt between them.
-      ctx.fillRect(left + i * 2 * zoom, top + (3 + Math.floor(phase)) * zoom, zoom, zoom);
+      ctx.fillRect(left + i * 2 * cell, top + (3 + Math.floor(phase)) * cell, cell, cell);
     }
     ctx.fillStyle = FX_STORM_BOLT_COLOR;
-    for (const [c, r] of BOLT_CELLS) ctx.fillRect(left + c * zoom, top + r * zoom, zoom, zoom);
+    for (const [c, r] of BOLT_CELLS) ctx.fillRect(left + c * cell, top + r * cell, cell, cell);
   }
 
   ctx.fillStyle = FX_HEART_COLOR;

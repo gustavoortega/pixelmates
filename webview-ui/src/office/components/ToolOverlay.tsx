@@ -40,8 +40,6 @@ import {
   PLATE_CMD_COLOR,
   PLATE_DONE_COLOR,
   PLATE_FULL_LAYOUT_LINE_PX,
-  PLATE_FULL_LINE2_PX,
-  PLATE_FULL_SUB_FONT_PX,
   PLATE_ITEM_GAP_PX,
   PLATE_PAD_X_PX,
   PLATE_SIDE_GAP_PX,
@@ -110,6 +108,7 @@ import {
   fullPlateMaxWidth,
   isMonitorFullPlates,
   isMonitorTag,
+  isSceneTwoLinePlates,
   monitorPlateScale,
   type MonitorType,
   type NameplateStyle,
@@ -121,16 +120,24 @@ import {
   type PlateFit,
   plateFit,
   plateIsCompact,
+  plateLine2Metrics,
   plateMetrics,
   plateScale,
   type PlateSide,
   plateSide,
   plateStateWords,
+  SCENE_PLATE_LIFT_PX,
   setMonitorTagZoom,
   spriteHeadTopY,
 } from '../nameplate.js';
 import { stackAbove, weatherAnchorY } from '../overlayStack.js';
-import { alertText, type PlateFacts, plateState, stateText } from '../plateState.js';
+import {
+  alertText,
+  type PlateFacts,
+  plateState,
+  sceneTwoLinePlate,
+  stateText,
+} from '../plateState.js';
 import { type OverlayProjection, overlayProjection } from '../projection.js';
 import { seatedBubbleOffsetPx, seatedDrawOffsetPx } from '../seatDraw.js';
 import { BUBBLE_WAITING_SPRITE } from '../sprites/spriteData.js';
@@ -338,8 +345,8 @@ function PlateBox({
         <span
           className="flex items-center whitespace-nowrap leading-none overflow-hidden"
           style={{
-            height: PLATE_FULL_LINE2_PX,
-            fontSize: PLATE_FULL_SUB_FONT_PX,
+            height: plateLine2Metrics().line,
+            fontSize: plateLine2Metrics().font,
             color: style.quiet ? style.state : PLATE_SUB_COLOR,
             padding: `0 ${PLATE_PAD_X_PX}px`,
           }}
@@ -853,7 +860,8 @@ export function ToolOverlay({
   const tags = isMonitorTag(compact);
   setMonitorTagZoom(zoom / dpr);
   // A lit desk's frame and its tag's alert tab say it needs you: the canvas adds no bubble over it.
-  officeState.hideLitBubbles = tags;
+  // The scene's two-line plate carries the alert on line 2, so it hides the bubble the same way.
+  officeState.hideLitBubbles = tags || isSceneTwoLinePlates();
   const type = currentMonitorType();
   const fitScale = plateScale(
     zoom,
@@ -950,6 +958,22 @@ export function ToolOverlay({
             : undefined,
       });
       if (content.mode === 'full') continue;
+      if (content.mode === 'compact' && content.plate && isSceneTwoLinePlates() && !ch.isSubagent) {
+        const facts = plateFacts(
+          officeState,
+          ch,
+          agentTools,
+          subagentCharacters,
+          subagentTools,
+          nowMs,
+        );
+        content.plate = sceneTwoLinePlate(
+          content.plate,
+          officeState.rosters.get(id)?.level,
+          facts.toolStatus,
+          nowMs,
+        );
+      }
       plans.set(id, { kind: 'compact', content });
       if (content.mode === 'compact' && content.plate && tags) {
         const plate = content.plate;
@@ -984,7 +1008,14 @@ export function ToolOverlay({
           y:
             side === 'below'
               ? project.toScreenY(tileMidY + sit) + COMPACT_LABEL_FEET_GAP_PX
-              : project.toScreenY(plateAnchorAboveY(tileMidY, sit, false, napHeadBobPx(ch))) - h,
+              : project.toScreenY(
+                  // The scene pins every plate to one baseline: a napper's lowered head does not drag its own.
+                  isSceneTwoLinePlates()
+                    ? plateAnchorAboveY(tileMidY, sit, false)
+                    : plateAnchorAboveY(tileMidY, sit, false, napHeadBobPx(ch)),
+                ) -
+                h -
+                (isSceneTwoLinePlates() ? SCENE_PLATE_LIFT_PX : 0),
           // The plate's own width (it hugs its words), never more than the cap.
           w: Math.min(maxWidth, plateBoxWidth(content.plate, compact, nowMs) * scale),
           minW: Math.min(maxWidth, plateBoxWidth(content.plate, compact, nowMs, true) * scale),
@@ -1363,7 +1394,11 @@ export function ToolOverlay({
               top={
                 side === 'below'
                   ? project.toScreenY(ch.y + sit) + COMPACT_LABEL_FEET_GAP_PX
-                  : project.toScreenY(plateAnchorAboveY(ch.y, sit, false, napHeadBobPx(ch)))
+                  : project.toScreenY(
+                      isSceneTwoLinePlates()
+                        ? plateAnchorAboveY(ch.y, sit, false)
+                        : plateAnchorAboveY(ch.y, sit, false, napHeadBobPx(ch)),
+                    ) - (isSceneTwoLinePlates() ? SCENE_PLATE_LIFT_PX : 0)
               }
               side={side}
               scale={scale}

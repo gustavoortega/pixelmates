@@ -724,6 +724,8 @@ export const FX_LEVEL_UP_QUEUE_MAX = 6;
 /** An XP pop ("+60 commit") lives this long: one DOM element that rises FX_POP_RISE_PX over it. */
 export const FX_POP_MS = 2400;
 export const FX_SPARKLE_MS = 600;
+/** A frozen dev scene (`&freeze=1`) parks every wander timer this far out: longer than any take. */
+export const FROZEN_WANDER_SEC = 1_000_000;
 export const FX_SPARKLE_PARTICLES = 6;
 export const FX_LEVEL_UP_MS = 2500;
 export const FX_PILLAR_MS = 1200;

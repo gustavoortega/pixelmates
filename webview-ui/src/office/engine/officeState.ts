@@ -19,6 +19,7 @@ import {
   COFFEE_COOLDOWN_SEC,
   COFFEE_MIN_STAY_SEC,
   DISMISS_BUBBLE_FAST_FADE_SEC,
+  FROZEN_WANDER_SEC,
   GREETER_ID,
   GREETER_TILE_MARGIN,
   INACTIVE_SEAT_TIMER_MIN_SEC,
@@ -258,6 +259,12 @@ export class OfficeState {
    * others.
    */
   greeter: Character | null = null;
+
+  /**
+   * Dev scenes only (`&freeze=1`, set by the browser mock): nobody wanders or goes for coffee and the
+   * pets stay where the scene put them, so a recording never shows an unscripted move.
+   */
+  frozen = false;
 
   /** World-space point the camera drifts to while the greeter is up
    *  (the bubble overlay recomputes it every frame: the combined center of the
@@ -1936,8 +1943,9 @@ export class OfficeState {
         stepPose(ch, dt, {
           coffeeActive: () => ch.trip !== null,
           sofaFree: () => this.freeSofaSlot(ch) !== null,
-          startCoffee: () => this.startCoffeeTrip(ch),
+          startCoffee: () => !this.frozen && this.startCoffeeTrip(ch),
         });
+        if (this.frozen) ch.wanderTimer = FROZEN_WANDER_SEC;
         held = this.stepCoffeeTrip(ch, dt);
       } else {
         // A helper at its desk reads or naps when idle like anyone, but never goes for coffee.
@@ -1993,6 +2001,7 @@ export class OfficeState {
     // ── Pet FSM ────────────────────────────────────────────────
     const goals = this.petGoals(officeNow());
     for (const pet of this.pets) {
+      if (this.frozen) break;
       updatePet(
         pet,
         dt,

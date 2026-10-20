@@ -13,20 +13,25 @@ import type { ServerMessage } from '../../core/src/messages.js';
 import type { ModelTier } from '../../core/src/provider.js';
 import { FX_POP_MS, PLATE_SCALE_MAX } from '../src/constants.js';
 import {
+  freezeHeroOffice,
   HERO_AGENTS,
   HERO_SEATS,
   heroMessages,
   heroZoomFor,
+  monitorMessages,
   parseHeroScene,
+  parseMonitorScene,
   seatHeroAgents,
   startHeroStage,
 } from '../src/heroScene.js';
 import { officeNow } from '../src/office/clock.js';
 import { FxText } from '../src/office/components/FxText.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
+import { createPet } from '../src/office/engine/petEntity.js';
 import { plateIsCompact, plateScale } from '../src/office/nameplate.js';
+import { type PlateState, sceneTwoLinePlate } from '../src/office/plateState.js';
 import { shaftRects } from '../src/office/shafts.js';
-import { xpPopLabel } from '../src/office/toolUtils.js';
+import { type NameplateContent, xpPopLabel } from '../src/office/toolUtils.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { Direction, IdlePose, TileType, WorkStatus } from '../src/office/types.js';
 import { loadRealAssets } from './realAssets.js';
@@ -174,10 +179,106 @@ describe('hero zoom', () => {
 
 describe('hero scene request', () => {
   it('turns on for ?scene=hero only, and &hud=0 hides the HUD', () => {
-    expect(parseHeroScene('?scene=hero')).toEqual({ hud: true });
-    expect(parseHeroScene('?scene=hero&hud=0')).toEqual({ hud: false });
+    expect(parseHeroScene('?scene=hero')?.hud).toBe(true);
+    expect(parseHeroScene('?scene=hero&hud=0')?.hud).toBe(false);
     expect(parseHeroScene('?scene=other')).toBeNull();
     expect(parseHeroScene('')).toBeNull();
+  });
+
+  it('reads the recording options and ignores values out of range', () => {
+    expect(
+      parseHeroScene('?scene=hero&pops=0&freeze=1&text=1.25&zoom=4&clock=21:10&hud=office'),
+    ).toEqual({
+      hud: false,
+      hudOffice: true,
+      pops: false,
+      freeze: true,
+      text: 1.25,
+      zoom: 4,
+      agents: null,
+      workflow: true,
+      clock: { hour: 21, minute: 10 },
+    });
+    expect(parseHeroScene('?scene=hero&text=9&zoom=2.5&clock=25:00')).toMatchObject({
+      pops: true,
+      freeze: false,
+      text: 1,
+      zoom: null,
+      clock: null,
+    });
+  });
+});
+
+describe('monitor scene recording options', () => {
+  it('&workflow=0 and &agents=... leave a quiet office: no run, only the kept agents', () => {
+    const opts = parseMonitorScene('?scene=monitor&agents=1,2,3,4&workflow=0')!;
+    expect(opts).toMatchObject({ agents: [1, 2, 3, 4], workflow: false });
+    const msgs = monitorMessages(1_000_000_000, opts);
+    expect(msgs.some((m) => m.type === 'workflowRun' || m.type === 'subagentPresent')).toBe(false);
+    const ids = new Set(msgs.flatMap((m) => ('id' in m && typeof m.id === 'number' ? [m.id] : [])));
+    expect([...ids].sort()).toEqual([1, 2, 3, 4]);
+    expect(monitorMessages(1_000_000_000).some((m) => m.type === 'workflowRun')).toBe(true);
+  });
+});
+
+describe('hero scene recording options', () => {
+  it('&pops=0 fires no pop of its own, so only a posted award pops', () => {
+    vi.useFakeTimers();
+    const os = new OfficeState(layoutOf());
+    seatHeroAgents(os);
+    const stop = startHeroStage(os, () => {}, Date.now, { pops: false, text: 1, clock: null });
+    vi.advanceTimersByTime(3 * FX_POP_MS);
+    expect(os.fx.active.filter((a) => a.kind === 'pop')).toHaveLength(0);
+    stop();
+    vi.useRealTimers();
+  });
+
+  it('&freeze=1 keeps the pet on its tile however long the office runs', () => {
+    const os = new OfficeState(layoutOf());
+    os.pets.push(createPet('test-cat', 1, 2, 2));
+    freezeHeroOffice(os);
+    const before = os.pets.map((p) => [p.tileCol, p.tileRow, p.x, p.y]);
+    expect(before.length).toBeGreaterThan(0);
+    for (let i = 0; i < 20 * 60; i++) os.update(0.05);
+    expect(os.pets.map((p) => [p.tileCol, p.tileRow, p.x, p.y])).toEqual(before);
+  });
+});
+
+describe('the scene plate: level and name over what the agent is doing', () => {
+  const plate = (state: PlateState | null): NameplateContent => ({
+    name: 'Ada',
+    namePv: false,
+    medal: null,
+    state,
+    loop: false,
+    sub: [{ text: 'Ship the checkout fix', pv: true }],
+    helper: false,
+    rarity: null,
+    pill: null,
+  });
+  const NOW = 1_000_000_000;
+  const line2 = (p: NameplateContent): string | undefined => p.sub?.[0].text;
+
+  it('words an edit, a command and a wait the way the README does', () => {
+    const edit = sceneTwoLinePlate(
+      plate({ kind: 'verb', verb: 'writing' }),
+      12,
+      'Editing a.ts',
+      NOW,
+    );
+    expect(edit.name).toBe('Lv12 Ada');
+    expect(line2(edit)).toBe('editing');
+    expect(edit.state).toBeNull();
+    expect(line2(sceneTwoLinePlate(plate({ kind: 'cmd', cmd: 'git commit' }), 12, null, NOW))).toBe(
+      '\u203A git commit',
+    );
+    const wait = plate({
+      kind: 'alert',
+      alert: { glyph: '?', tone: 'wait', since: NOW - (3 * 60 + 10) * 1000 },
+    });
+    expect(line2(sceneTwoLinePlate(wait, 9, null, NOW))).toBe('? 3m needs you');
+    const idle = plate({ kind: 'idle', since: NOW - 68 * 60_000 });
+    expect(line2(sceneTwoLinePlate(idle, 4, null, NOW))).toBe('idle 1h08');
   });
 });
 
