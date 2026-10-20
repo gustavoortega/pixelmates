@@ -323,6 +323,21 @@ components:
             Only meaningful when status is "waiting". True when the agent went
             idle waiting on the user (drives the "Waiting for input" label);
             absent/false means the agent finished its turn ("Done").
+        awaitingReason:
+          $ref: '#/components/schemas/AwaitingReason'
+          description: >-
+            Sent only with status "waiting" and awaitingInput true. "question"
+            = the agent asked the user something (a pending question tool);
+            "idle" = it finished and sat idle. Absent from an older server,
+            which a client reads as "question".
+        question:
+          type: string
+          maxLength: 160
+          description: >-
+            Sent only with awaitingReason "question". The first question the
+            agent asked, flattened, redacted and cut to 80 code points by the
+            server. Session text: a client masks it in privacy mode. Absent
+            when the server could not read one.
         since:
           type: integer
           description: >-
@@ -330,6 +345,11 @@ components:
             when the status changes, not on a repeat; a status read from the
             transcript takes the timestamp of the record that set it. Absent
             when unknown.
+
+    AwaitingReason:
+      description: Why a waiting agent needs the user (see AgentStatus.awaitingReason).
+      type: string
+      enum: [question, idle]
 
     AgentActivityStatus:
       description: >-

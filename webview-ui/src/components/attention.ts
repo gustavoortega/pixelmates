@@ -2,15 +2,18 @@
  * Who needs the user, as the attention rail lists them. Pure: the rail and the arrow keys lay
  * out what these return, and every rule is a table test.
  *
- * - Needs you: a permission prompt (an open tool row waiting on permission) or a question (the
- *   agent stopped waiting for input). Stuck: an unacknowledged tripwire, or a health mark that
- *   says the agent spins (stuck, looping, stalled; a dead process is not something to answer).
- * - One ticket per agent, in its most urgent kind: permission, then question, then stuck; a
- *   tripwire outranks a health mark, since it waits on an acknowledgement.
- * - Oldest first by the server's `since`; a ticket whose start is unknown goes after the dated
- *   ones, by id.
+ * - Needs you: a permission prompt (an open tool row waiting on permission), a question (the
+ *   agent stopped on a question for the user) or an idle wait (it finished and sits at its
+ *   prompt). Stuck: an unacknowledged tripwire, or a health mark that says the agent spins
+ *   (stuck, looping, stalled; a dead process is not something to answer).
+ * - One ticket per agent, in its most urgent kind: permission, then question, then idle, then
+ *   stuck; a tripwire outranks a health mark, since it waits on an acknowledgement.
+ * - Oldest first by the server's `since` (a ticket whose start is unknown goes after the dated
+ *   ones, by id), except that idle waits come after every permission and question ticket: a
+ *   finished session never outranks one that is blocked.
  * - No session text reaches a reason except the program (and allowlisted subcommand) the server
- *   already put in a Bash status, and a tripwire's rule name.
+ *   already put in a Bash status, a tripwire's rule name, and the question the agent asked: the
+ *   server redacted and cut it, and the rail's reason line is masked by privacy mode.
  */
 
 import type { HealthState } from '../../../core/src/messages.js';
@@ -18,7 +21,7 @@ import type { AgentHealthView } from '../office/health.js';
 import type { ToolActivity } from '../office/types.js';
 import { formatDuration } from './limitsPace.js';
 
-export type TicketKind = 'permission' | 'question' | 'stuck';
+export type TicketKind = 'permission' | 'question' | 'idle' | 'stuck';
 
 /** What the rail reads about one top-level agent. Absent fields are unknown, never 0. */
 export interface AttentionAgent {
@@ -27,8 +30,12 @@ export interface AttentionAgent {
   tools?: readonly ToolActivity[];
   /** The last agentStatus; absent means active. */
   status?: string;
-  /** The waiting status is a question, not a finished turn. */
+  /** The waiting status asks something of the user (a question, or an idle wait). */
   awaitingInput?: boolean;
+  /** Why it waits, from the server; absent (an older server) reads as a question. */
+  awaitingReason?: 'question' | 'idle';
+  /** What the agent asked, when the server could read it. */
+  question?: string;
   /** The last tool the agent started, by its provider-agnostic name. */
   currentTool?: string | null;
   health?: AgentHealthView;
@@ -42,8 +49,8 @@ export interface AttentionAgent {
 export interface Ticket {
   id: number;
   kind: TicketKind;
-  /** The corner badge: `!` permission, `?` question, `×` stuck. */
-  glyph: '!' | '?' | '×';
+  /** The corner badge: `!` permission, `?` question, `–` idle wait, `×` stuck. */
+  glyph: '!' | '?' | '–' | '×';
   /** The line to read from 2 m. */
   reason: string;
   /** Epoch ms (server clock) the state began; absent when the server did not say. */
@@ -97,11 +104,20 @@ function ticketFor(agent: AttentionAgent): Ticket | null {
     };
   }
   if (agent.status === 'waiting' && agent.awaitingInput) {
+    if (agent.awaitingReason === 'idle') {
+      return {
+        id: agent.id,
+        kind: 'idle',
+        glyph: '–',
+        reason: 'Finished, waiting for you',
+        since: agent.statusSince,
+      };
+    }
     return {
       id: agent.id,
       kind: 'question',
       glyph: '?',
-      reason: 'Has a question',
+      reason: agent.question ?? 'Has a question',
       since: agent.statusSince,
     };
   }
@@ -127,6 +143,7 @@ function ticketFor(agent: AttentionAgent): Ticket | null {
 }
 
 function oldestFirst(a: Ticket, b: Ticket): number {
+  if ((a.kind === 'idle') !== (b.kind === 'idle')) return a.kind === 'idle' ? 1 : -1;
   if (a.since !== undefined && b.since !== undefined && a.since !== b.since) {
     return a.since - b.since;
   }

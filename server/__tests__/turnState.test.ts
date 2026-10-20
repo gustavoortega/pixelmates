@@ -140,8 +140,8 @@ describe('turnSignal (Claude record classifier)', () => {
       timestamp: '2026-10-11T12:00:00Z',
       message: {
         content: [
-          { type: 'tool_use', id: 'a', name: 'Read' },
-          { type: 'tool_use', id: 'b', name: 'Bash' },
+          { type: 'tool_use', id: 'a', name: 'Read', input: { file_path: 'a.ts' } },
+          { type: 'tool_use', id: 'b', name: 'Bash', input: { command: 'ls' } },
         ],
       },
     });
@@ -149,6 +149,7 @@ describe('turnSignal (Claude record classifier)', () => {
       kind: 'toolUse',
       toolUseIds: ['a', 'b'],
       toolNames: ['Read', 'Bash'],
+      toolInputs: [{ file_path: 'a.ts' }, { command: 'ls' }],
       timestampMs: NOW,
     });
   });
@@ -217,6 +218,55 @@ describe('deriveTurnState', () => {
     expect(
       derive([prompt(), toolUse([['q', 'AskUserQuestion']]), toolResult('q', ago(1_000))]),
     ).toBe('active');
+  });
+
+  // B7 / K3, adoption entry point: a restarted server shows the question a session is stopped on.
+  describe('the question of an adopted session', () => {
+    const asking = (question: unknown, extra: unknown[] = []) => ({
+      type: 'assistant',
+      timestamp: ago(MIN),
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'q',
+            name: 'AskUserQuestion',
+            input: { questions: [{ question }] },
+          },
+          ...extra,
+        ],
+      },
+    });
+    const stateOf = (records: unknown[]) =>
+      deriveTurnState(
+        records.map((r) => JSON.stringify(r)),
+        NOW,
+        { leadMtimeMs: NOW - 5_000 },
+        turnSignal,
+        traits,
+      );
+
+    it('reads the text of the pending question tool, and no other tool call', () => {
+      const state = stateOf([prompt(), asking('Which database?')]);
+      expect(state).toMatchObject({ kind: 'awaitingInput', question: 'Which database?' });
+      // Only ids and names reach the health seed, never an input.
+      expect(JSON.stringify(state)).not.toContain('questions');
+    });
+
+    it('redacts and cuts the text like the hook path does', () => {
+      const token = 'ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8';
+      const state = stateOf([prompt(), asking(`Use ${token}\u202e ${'y'.repeat(200)}`)]);
+      const text = (state as { question: string }).question;
+      expect(text).not.toContain('ghp_');
+      expect(text).not.toContain('\u202e');
+      expect(Array.from(text).length).toBeLessThanOrEqual(80);
+    });
+
+    it('is still awaiting input, without text, when the question cannot be read', () => {
+      const state = stateOf([prompt(), asking(undefined)]);
+      expect(state.kind).toBe('awaitingInput');
+      expect(state).not.toHaveProperty('question');
+    });
   });
 
   it('pairs parallel tool calls by id: one result back, one still running', () => {

@@ -141,10 +141,14 @@ export interface AgentStatus {
   id: number;
   status: AgentActivityStatus;
   awaitingInput?: boolean;
+  awaitingReason?: AwaitingReason;
+  question?: string;
   since?: number;
 }
 
 export type AgentActivityStatus = 'active' | 'waiting' | 'idle';
+
+export type AwaitingReason = 'question' | 'idle';
 
 export interface AgentToolStart {
   type: 'agentToolStart';

@@ -53,9 +53,17 @@ export function applyMonitorMessage(os: OfficeState, msg: HostMessage): void {
         os.setWorkflowRun(id, msg.runId, viewOf(msg, RUN_ENVELOPE));
       }
       return;
-    case 'agentStatus':
+    case 'agentStatus': {
       os.setStatusSince(id, epochMs(msg.since));
+      // A wait with no reason is an older server's: a question. Anything else carries none.
+      const waiting = msg.status === 'waiting' && msg.awaitingInput === true;
+      os.setAwaiting(
+        id,
+        waiting ? (msg.awaitingReason === 'idle' ? 'idle' : 'question') : undefined,
+        waiting && typeof msg.question === 'string' && msg.question ? msg.question : undefined,
+      );
       return;
+    }
     case 'agentToolStart':
       // A start without permissionActive means the prompt was answered (agentMessages.ts).
       os.setPermissionSince(

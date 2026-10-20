@@ -1,4 +1,5 @@
 import type { AgentStateStore } from './agentStateStore.js';
+import { clearAwaiting } from './awaitingQuestion.js';
 import { PERMISSION_TIMER_DELAY_MS } from './constants.js';
 import { notePermissionPending, statusBroadcast } from './statusSince.js';
 import { hasPromotedBackgroundAgent } from './teamUtils.js';
@@ -36,6 +37,8 @@ export function clearAgentActivity(
   // before this point was read, so a verdict left belongs to a call that never finished.
   agent.toolVerdicts?.clear();
   agent.isWaiting = false;
+  // A new prompt, an interrupt or a file switch ends any wait, a pending question included.
+  clearAwaiting(agent);
   agent.permissionSent = false;
   cancelPermissionTimer(agentId, permissionTimers);
   agents.broadcast({ type: 'agentToolsClear', id: agentId });
@@ -87,7 +90,7 @@ export function startWaitingTimer(
     const agent = agents.get(agentId);
     if (agent) {
       agent.isWaiting = true;
-      agent.awaitingInput = false;
+      clearAwaiting(agent);
     }
     // Heuristic text-idle timer: the turn ended without a clear idle signal,
     // so this is "Done", not "Waiting for input".

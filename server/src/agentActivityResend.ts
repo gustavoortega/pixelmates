@@ -4,7 +4,7 @@ import { healthResendMessage } from './health.js';
 import { rosterMessage } from './rosterAgent.js';
 import { modeMessage, shellsMessage } from './sessionSignals.js';
 import { derivedTitle } from './sessionTitle.js';
-import { permissionSince, statusSince } from './statusSince.js';
+import { awaitingFields, isQuestion, permissionSince, statusSince } from './statusSince.js';
 import { hasPromotedBackgroundAgent } from './teamUtils.js';
 import { tripwireResendMessage } from './tripwires.js';
 import type { AgentState } from './types.js';
@@ -25,7 +25,8 @@ export function agentStatusMessage(id: number, agent: AgentState): Record<string
       id,
       status: 'waiting',
       awaitingInput,
-      since: statusSince(agent, 'waiting', awaitingInput),
+      ...(awaitingInput ? awaitingFields(agent) : {}),
+      since: statusSince(agent, 'waiting', isQuestion(agent, awaitingInput)),
     };
   }
   const working =

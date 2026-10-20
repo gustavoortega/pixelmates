@@ -2,6 +2,12 @@ import * as path from 'path';
 
 import type { AgentEvent, HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import {
+  clearAwaiting,
+  hasPendingQuestion,
+  questionText,
+  setAwaitingQuestion,
+} from './awaitingQuestion.js';
 import { SESSION_END_GRACE_MS } from './constants.js';
 import {
   healthOnHook,
@@ -383,7 +389,7 @@ export class HookEventHandler {
         // Both PostToolUse and PostToolUseFailure normalize to toolEnd. The display handler
         // treats them alike (agentToolDone + clear currentHookToolId); only the mood tells
         // them apart.
-        return this.handlePostToolUse(agent, agentId);
+        return this.handlePostToolUse(normEvent, agent, agentId);
       case 'subagentStart':
         return this.provider.team
           ? this.handleSubagentStart(event, agent, agentId, subAgentId)
@@ -398,9 +404,10 @@ export class HookEventHandler {
         return this.handlePermissionRequest(agent, agentId);
       case 'turnEnd':
         // Handles Stop AND Notification(idle_prompt) -- both normalize to turnEnd.
-        // awaitingInput discriminates them: idle_prompt sets it (-> "Waiting for
-        // input"), Stop leaves it absent (-> "Done").
-        return this.handleStop(agent, agentId, normEvent.awaitingInput === true);
+        // `idle` discriminates them: idle_prompt is the quiet "finished, waiting for you".
+        return normEvent.idle === true
+          ? this.handleIdlePrompt(agent, agentId)
+          : this.handleStop(agent, agentId);
       case 'subagentTurnEnd':
         // Handles TeammateIdle AND TaskCompleted -- both normalize here. The normalized
         // `reason` field discriminates; the team-provider's extractTeammateNameFromEvent(raw)
@@ -562,9 +569,18 @@ export class HookEventHandler {
 
     // Cancel waiting, mark active
     cancelWaitingTimer(agentId, this.waitingTimers);
-    agent.isWaiting = false;
     agent.permissionSent = false;
     agent.hadToolsInTurn = true;
+
+    // A question tool stops the turn on the user. The tool row stays (it is what the user
+    // answers); the status is a question ticket, dated now, carrying the question's text.
+    const asksUser = this.provider.turnTraits?.userQuestionTools.has(toolName) === true;
+    if (asksUser) setAwaitingQuestion(agent, questionText(toolInput));
+    else {
+      // Any other call from the same actor means the last question was answered.
+      agent.isWaiting = false;
+      clearAwaiting(agent);
+    }
 
     // Send tool start + active state to webview (instant, no 500ms JSONL delay).
     // Skip for Task/Agent tools — their sub-agent characters need the stable JSONL
@@ -580,7 +596,11 @@ export class HookEventHandler {
         toolName,
       });
     }
-    this.agents.broadcast(statusBroadcast(agentId, agent, 'active', Date.now()));
+    this.agents.broadcast(
+      asksUser
+        ? statusBroadcast(agentId, agent, 'waiting', Date.now(), true)
+        : statusBroadcast(agentId, agent, 'active', Date.now()),
+    );
   }
 
   /**
@@ -588,7 +608,19 @@ export class HookEventHandler {
    * Stop hook handles the idle transition. This is here for completeness and
    * to serve as a confirmation event for pending external sessions.
    */
-  private handlePostToolUse(agent: AgentState, agentId: number): void {
+  private handlePostToolUse(
+    normEvent: Extract<AgentEvent, { kind: 'toolEnd' }>,
+    agent: AgentState,
+    agentId: number,
+  ): void {
+    // The question was answered (or declined): the turn goes on. Matched by the ended tool's
+    // name, not any PostToolUse, so a parallel tool finishing does not drop the ticket.
+    const ended = normEvent.toolName ?? agent.currentHookToolName ?? '';
+    if (hasPendingQuestion(agent) && this.provider.turnTraits?.userQuestionTools.has(ended)) {
+      agent.isWaiting = false;
+      clearAwaiting(agent);
+      this.agents.broadcast(statusBroadcast(agentId, agent, 'active', Date.now()));
+    }
     if (agent.currentHookToolId) {
       // Suppress tool display when lead has inline teammates (see handlePreToolUse)
       if (!hasInlineTeammates(agentId, this.agents)) {
@@ -800,8 +832,18 @@ export class HookEventHandler {
   }
 
   /** Handle Stop: Claude finished responding, mark agent as waiting. */
-  private handleStop(agent: AgentState, agentId: number, awaitingInput = false): void {
-    this.markAgentWaiting(agent, agentId, awaitingInput);
+  private handleStop(agent: AgentState, agentId: number): void {
+    this.markAgentWaiting(agent, agentId);
+  }
+
+  /**
+   * Handle Notification(idle_prompt): the session finished and sat idle. It also fires while
+   * a question is still unanswered; that wait is the question's, so nothing changes. Otherwise
+   * it is the quiet "finished, waiting for you", dated by the Stop that preceded it.
+   */
+  private handleIdlePrompt(agent: AgentState, agentId: number): void {
+    if (hasPendingQuestion(agent)) return;
+    this.markAgentWaiting(agent, agentId, true);
   }
 
   /**
@@ -883,7 +925,7 @@ export class HookEventHandler {
    * agents), cancels timers, and notifies the webview. Same logic as the turn_duration
    * handler in transcriptParser.ts.
    */
-  private markAgentWaiting(agent: AgentState, agentId: number, awaitingInput = false): void {
+  private markAgentWaiting(agent: AgentState, agentId: number, idle = false): void {
     cancelWaitingTimer(agentId, this.waitingTimers);
     cancelPermissionTimer(agentId, this.permissionTimers);
 
@@ -931,13 +973,17 @@ export class HookEventHandler {
     }
 
     agent.isWaiting = true;
-    agent.awaitingInput = awaitingInput;
+    clearAwaiting(agent);
+    if (idle) {
+      agent.awaitingInput = true;
+      agent.awaitingReason = 'idle';
+    }
     agent.permissionSent = false;
     agent.hadToolsInTurn = false;
     agent.currentHookToolId = undefined;
     // Every hook path into waiting ends the turn: Stop, idle prompt, a teammate going idle.
     healthOnTurnEnd(agent, this.agents, this.provider.turnTraits);
-    this.agents.broadcast(statusBroadcast(agentId, agent, 'waiting', Date.now(), awaitingInput));
+    this.agents.broadcast(statusBroadcast(agentId, agent, 'waiting', Date.now(), idle));
   }
 
   /** Clean up timers and maps. Called when the extension disposes. */

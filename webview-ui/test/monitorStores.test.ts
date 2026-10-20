@@ -34,7 +34,15 @@ function everyStore(id: number): Array<{ type: string; [key: string]: unknown }>
     { type: 'agentLoop', id, nextAt: T + 60_000, wakes: 3 },
     { type: 'agentTests', id, passed: 40, failed: 2, at: T },
     { type: 'workflowRun', id, runId: 'r1', status: 'running', name: 'review-pr', started: 4 },
-    { type: 'agentStatus', id, status: 'waiting', awaitingInput: true, since: T - 1 },
+    {
+      type: 'agentStatus',
+      id,
+      status: 'waiting',
+      awaitingInput: true,
+      awaitingReason: 'question',
+      question: 'Which database?',
+      since: T - 1,
+    },
     { type: 'agentToolPermission', id, permissionSince: T - 2 },
     {
       type: 'agentHealth',
@@ -65,6 +73,8 @@ function storedFor(os: OfficeState, id: number) {
     tests: os.tests.get(id),
     runs: os.workflowRuns.get(id) && Object.fromEntries(os.workflowRuns.get(id)!),
     status: os.statusSince.get(id),
+    reason: os.awaitingReasons.get(id),
+    question: os.questions.get(id),
     permission: os.permissionSince.get(id),
     health: os.healthSince.get(id),
     tripwire: os.tripwireSince.get(id),
@@ -78,6 +88,8 @@ const EVERY_STORE_HELD = {
   tests: { passed: 40, failed: 2, at: T },
   runs: { r1: { status: 'running', name: 'review-pr', started: 4 } },
   status: T - 1,
+  reason: 'question',
+  question: 'Which database?',
   permission: T - 2,
   health: T - 3,
   tripwire: T - 4,
@@ -90,6 +102,8 @@ const NOTHING_HELD = {
   tests: undefined,
   runs: undefined,
   status: undefined,
+  reason: undefined,
+  question: undefined,
   permission: undefined,
   health: undefined,
   tripwire: undefined,
@@ -136,6 +150,35 @@ describe('monitor stores', () => {
       applyMonitorMessage(os, msg);
     }
     expect(storedFor(os, 7)).toEqual(NOTHING_HELD);
+  });
+
+  it('a status keeps the wait reason and question only while it is a wait for the user', () => {
+    const os = new OfficeState(floorLayout());
+    const status = (extra: Record<string, unknown>) =>
+      applyMonitorMessage(os, { type: 'agentStatus', id: 7, ...extra });
+    status({ status: 'waiting', awaitingInput: true, awaitingReason: 'idle' });
+    expect([os.awaitingReasons.get(7), os.questions.get(7)]).toEqual(['idle', undefined]);
+    // An older server sends no reason: that wait is a question.
+    status({ status: 'waiting', awaitingInput: true });
+    expect(os.awaitingReasons.get(7)).toBe('question');
+    status({
+      status: 'waiting',
+      awaitingInput: true,
+      awaitingReason: 'question',
+      question: 'Ship?',
+    });
+    expect(os.questions.get(7)).toBe('Ship?');
+    // A finished turn, or work resuming, drops both.
+    status({ status: 'waiting', awaitingInput: false });
+    expect([os.awaitingReasons.get(7), os.questions.get(7)]).toEqual([undefined, undefined]);
+    status({
+      status: 'waiting',
+      awaitingInput: true,
+      awaitingReason: 'question',
+      question: 'Ship?',
+    });
+    status({ status: 'active' });
+    expect([os.awaitingReasons.get(7), os.questions.get(7)]).toEqual([undefined, undefined]);
   });
 
   it('B8 a monitor message replaces its store entry: a field it leaves out is gone, not kept', () => {

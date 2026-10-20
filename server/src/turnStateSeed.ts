@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { HookProvider } from '../../core/src/provider.js';
+import { clearAwaiting, setAwaitingQuestion } from './awaitingQuestion.js';
 import { CONTEXT_SEED_TAIL_BYTES } from './constants.js';
 import { seedHealth } from './health.js';
 import { restampStatus } from './statusSince.js';
@@ -133,7 +134,8 @@ export function applyTurnDerivation(agent: AgentState, derivation: TurnDerivatio
   if ((agent.hookSeq ?? 0) !== derivation.hookSeq) return false;
   const { state } = derivation;
   agent.isWaiting = state.kind === 'waiting' || state.kind === 'awaitingInput';
-  agent.awaitingInput = state.kind === 'awaitingInput';
+  if (state.kind === 'awaitingInput') setAwaitingQuestion(agent, state.question);
+  else clearAwaiting(agent);
   agent.derivedActive = state.kind === 'active';
   // The status this file says, dated by the record that said it (none: unknown).
   if (state.kind === 'idle') restampStatus(agent, 'idle', false, undefined);

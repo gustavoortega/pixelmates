@@ -27,6 +27,9 @@ export interface TurnSignal {
     | 'ignore'; // bookkeeping records
   toolUseIds?: string[];
   toolNames?: string[];
+  /** The input of each tool_use, parallel to `toolNames`. Read only for the tools the turn
+   *  walk asks the user with (awaitingQuestion.ts); never stored or logged. */
+  toolInputs?: unknown[];
   /** Epoch ms the record claims, when it carries one. */
   timestampMs?: number;
 }
@@ -83,16 +86,19 @@ export type AgentEvent =
   | {
       kind: 'toolEnd';
       toolId: string;
+      /** The tool that ended, when the provider reports it. Lets a handler tell a question
+       *  tool's end from a parallel tool's. */
+      toolName?: string;
       /** True when the tool failed (Claude's PostToolUseFailure). Absent = succeeded. */
       failed?: boolean;
     }
   | {
       kind: 'turnEnd';
-      /** True when the turn ended because the agent went idle waiting on the
-       *  user (Claude's Notification(idle_prompt)) rather than simply finishing
-       *  its response (Stop). Drives the "Waiting for input" vs "Done" label.
-       *  Absent/false = the agent finished its turn (Done). */
-      awaitingInput?: boolean;
+      /** True when the turn ended because the agent sat idle at its prompt (Claude's
+       *  Notification(idle_prompt)) rather than simply finishing its response (Stop). It is
+       *  a quiet "finished, waiting for you", never a question: a pending question is its own
+       *  signal (a user-question tool start). Absent/false = the agent finished its turn. */
+      idle?: boolean;
     }
   | {
       kind: 'subagentStart';

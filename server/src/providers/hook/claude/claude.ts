@@ -236,6 +236,11 @@ function normalizeHookEvent(
   return { ...normalized, agentId };
 }
 
+/** The ended tool's name, when the payload carries one. */
+function toolNameOf(raw: Record<string, unknown>): { toolName?: string } {
+  return typeof raw.tool_name === 'string' && raw.tool_name ? { toolName: raw.tool_name } : {};
+}
+
 function normalizeSessionEvent(
   eventName: string,
   sessionId: string,
@@ -261,10 +266,13 @@ function normalizeSessionEvent(
     }
 
     case 'PostToolUse':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current' } };
+      return { sessionId, event: { kind: 'toolEnd', toolId: 'current', ...toolNameOf(raw) } };
 
     case 'PostToolUseFailure':
-      return { sessionId, event: { kind: 'toolEnd', toolId: 'current', failed: true } };
+      return {
+        sessionId,
+        event: { kind: 'toolEnd', toolId: 'current', ...toolNameOf(raw), failed: true },
+      };
 
     case 'Stop':
       return { sessionId, event: { kind: 'turnEnd' } };
@@ -314,9 +322,10 @@ function normalizeSessionEvent(
         return { sessionId, event: { kind: 'permissionRequest' } };
       }
       if (notificationType === 'idle_prompt') {
-        // idle_prompt = Claude went idle waiting on the user, not just a finished
-        // turn. awaitingInput drives the "Waiting for input" label (vs "Done" for Stop).
-        return { sessionId, event: { kind: 'turnEnd', awaitingInput: true } };
+        // idle_prompt fires after a finished turn sat idle, and equally while a question is
+        // still unanswered. It says nothing about a question by itself: that is the
+        // question tool's own PreToolUse, so this is only the quiet "finished, waiting".
+        return { sessionId, event: { kind: 'turnEnd', idle: true } };
       }
       return null;
     }
@@ -542,12 +551,13 @@ export function turnSignal(record: unknown): TurnSignal {
   if (r.type === 'assistant') {
     if (typeof content === 'string') return stamp(content.trim() ? 'textAnswer' : 'ignore');
     if (!Array.isArray(content) || content.length === 0) return stamp('ignore');
-    const blocks = content as Array<{ type?: string; id?: string; name?: string }>;
+    const blocks = content as Array<{ type?: string; id?: string; name?: string; input?: unknown }>;
     const toolUses = blocks.filter((b) => b.type === 'tool_use');
     if (toolUses.length > 0) {
       return stamp('toolUse', {
         toolUseIds: toolUses.flatMap((b) => (b.id ? [b.id] : [])),
         toolNames: toolUses.map((b) => b.name ?? ''),
+        toolInputs: toolUses.map((b) => b.input),
       });
     }
     if (blocks.some((b) => b.type === 'text')) return stamp('textAnswer');

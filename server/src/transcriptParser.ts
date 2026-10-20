@@ -2,6 +2,12 @@ const debug = process.env.PIXEL_AGENTS_DEBUG !== '0';
 
 import type { HookProvider, SignalHit } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import {
+  clearAwaiting,
+  hasPendingQuestion,
+  questionText,
+  setAwaitingQuestion,
+} from './awaitingQuestion.js';
 import { SIGNAL_KEYS_MAX, TEXT_IDLE_DELAY_MS, TOOL_DONE_DELAY_MS } from './constants.js';
 import { updateContextUsage } from './contextUsage.js';
 import {
@@ -200,9 +206,23 @@ export function processTranscriptLine(
 
       if (hasToolUse) {
         cancelWaitingTimer(agentId, waitingTimers);
-        agent.isWaiting = false;
+        // A question tool stops the turn on the user: the live twin of the adoption walk's
+        // awaitingInput. Any other tool call means the last question was answered.
+        const asked = blocks.find(
+          (b) => b.type === 'tool_use' && traits?.userQuestionTools.has(b.name ?? ''),
+        );
+        if (asked) {
+          setAwaitingQuestion(agent, questionText(asked.input));
+        } else {
+          agent.isWaiting = false;
+          clearAwaiting(agent);
+        }
         agent.hadToolsInTurn = true;
-        agents.broadcast(statusBroadcast(agentId, agent, 'active', turn?.timestampMs));
+        agents.broadcast(
+          asked
+            ? statusBroadcast(agentId, agent, 'waiting', turn?.timestampMs, true)
+            : statusBroadcast(agentId, agent, 'active', turn?.timestampMs),
+        );
         let hasNonExemptTool = false;
         for (const block of blocks) {
           if (block.type === 'tool_use' && block.id) {
@@ -322,7 +342,7 @@ export function processTranscriptLine(
       cancelWaitingTimer(agentId, waitingTimers);
       clearAgentActivity(agent, agentId, agents, permissionTimers);
       agent.isWaiting = true;
-      agent.awaitingInput = false;
+      clearAwaiting(agent);
       agent.hadToolsInTurn = false;
       healthOnTurnEnd(agent, agents, traits);
       agents.broadcast(statusBroadcast(agentId, agent, 'waiting', turn?.timestampMs, false));
@@ -464,6 +484,15 @@ export function processTranscriptLine(
               console.log(
                 `[Pixel Agents] JSONL: Agent ${agentId} - tool done: ${block.tool_use_id}`,
               );
+              // The answer to a question tool: the turn goes on, the ticket is gone.
+              if (
+                hasPendingQuestion(agent) &&
+                traits?.userQuestionTools.has(completedToolName ?? '')
+              ) {
+                agent.isWaiting = false;
+                clearAwaiting(agent);
+                agents.broadcast(statusBroadcast(agentId, agent, 'active', turn?.timestampMs));
+              }
               // If the completed tool spawned a subagent, clear its subagent tools
               if (isSubagentTool(completedToolName)) {
                 agent.activeSubagentToolIds.delete(completedToolId);
@@ -645,7 +674,7 @@ export function processTranscriptLine(
       }
 
       agent.isWaiting = true;
-      agent.awaitingInput = false;
+      clearAwaiting(agent);
       agent.permissionSent = false;
       agent.hadToolsInTurn = false;
       healthOnTurnEnd(agent, agents, traits);

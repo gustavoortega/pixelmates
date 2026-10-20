@@ -86,6 +86,7 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     transcriptParser.ts              JSONL parsing for heuristic / file-fallback mode
     timerManager.ts                  Waiting / permission timers
     sessionMeta.ts                   The monitor's `agentSession` (start, branch, short id, cost): per-record fold, head/tail seed, `costFromRecord` (the one cost extractor), scan-adopted folder from the transcript's cwd
+    awaitingQuestion.ts              questionText (the one producer of the question text: sanitized, redacted, 80 code points) and the awaiting-state helpers; the text lives in memory only, never logged or persisted
     statusSince.ts                   When each status and pending permission prompt began (the monitor's `since`): stamped on a change, never on a repeat
     assetLoader.ts                   PNG → SpriteData via pngjs
     teamUtils.ts                     isInlineTeammateOf, getInlineTeammates, hasInlineTeammates

@@ -188,6 +188,11 @@ export class OfficeState {
   permissionSince: Map<number, number> = new Map();
   healthSince: Map<number, number> = new Map();
   tripwireSince: Map<number, number> = new Map();
+  /** Why a waiting agent awaits the user and what it asked (the rail's question ticket). The
+   *  text is session text: only the rail's reason line reads it, and that line is masked by
+   *  privacy mode. Absent when the status carries none. */
+  awaitingReasons: Map<number, 'question' | 'idle'> = new Map();
+  questions: Map<number, string> = new Map();
   /** Bumped by every change to the monitor stores above and by every host-message write the
    *  monitor panels also read (title, model, context, session signals, tripwire, health,
    *  roster, team), never by per-frame state; React panels re-render when it moves
@@ -889,6 +894,8 @@ export class OfficeState {
       this.permissionSince,
       this.healthSince,
       this.tripwireSince,
+      this.awaitingReasons,
+      this.questions,
     ];
   }
 
@@ -937,6 +944,12 @@ export class OfficeState {
 
   setStatusSince(id: number, since: number | undefined): void {
     this.writeMonitor(this.statusSince, id, since);
+  }
+
+  /** What an agentStatus says about the wait; undefined for either clears it. */
+  setAwaiting(id: number, reason: 'question' | 'idle' | undefined, question: string | undefined) {
+    this.writeMonitor(this.awaitingReasons, id, reason);
+    this.writeMonitor(this.questions, id, question);
   }
 
   setPermissionSince(id: number, since: number | undefined): void {

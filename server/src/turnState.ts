@@ -1,4 +1,5 @@
 import type { TurnSignal, TurnTraits } from '../../core/src/provider.js';
+import { questionText } from './awaitingQuestion.js';
 import {
   TURN_ACTIVE_STALE_MS,
   TURN_LONG_TOOL_STALE_MS,
@@ -19,7 +20,7 @@ export interface PendingTool {
 export type DerivedTurnState =
   | { kind: 'active'; pendingTools: PendingTool[]; atMs: number; sinceMs?: number }
   | { kind: 'waiting'; sinceMs?: number }
-  | { kind: 'awaitingInput'; pendingTools: PendingTool[]; sinceMs?: number }
+  | { kind: 'awaitingInput'; pendingTools: PendingTool[]; question?: string; sinceMs?: number }
   | { kind: 'idle' };
 
 /** Last-write times of the files that prove an agent is alive. */
@@ -55,6 +56,8 @@ export function deriveTurnState(
 ): DerivedTurnState {
   const answered = new Set<string>();
   const pending: PendingTool[] = [];
+  // The input of each open question tool, kept only long enough to read its text.
+  const questionInputs = new Map<string, unknown>();
   let decision: 'active' | 'waiting' | undefined;
   let decidedAt: number | undefined;
 
@@ -81,8 +84,11 @@ export function deriveTurnState(
       decidedAt ??= sig.timestampMs;
       const ids = sig.toolUseIds ?? [];
       const names = sig.toolNames ?? [];
+      const inputs = sig.toolInputs ?? [];
       ids.forEach((id, n) => {
-        if (!answered.has(id)) pending.push({ id, name: names[n] ?? '' });
+        if (answered.has(id)) return;
+        pending.push({ id, name: names[n] ?? '' });
+        if (traits.userQuestionTools.has(names[n] ?? '')) questionInputs.set(id, inputs[n]);
       });
       // A tool_use ends the search for older pending calls only at a turn
       // boundary; keep walking so parallel calls split across records pair up.
@@ -104,12 +110,17 @@ export function deriveTurnState(
     return age > TURN_WAITING_STALE_MS ? { kind: 'idle' } : { kind: 'waiting', sinceMs: decidedAt };
   }
 
-  const askedUser = pending.some((t) => traits.userQuestionTools.has(t.name));
-  if (askedUser) {
+  const asked = pending.find((t) => traits.userQuestionTools.has(t.name));
+  if (asked) {
     const age = now - (decidedAt ?? clocks.leadMtimeMs);
-    return age > TURN_WAITING_STALE_MS
-      ? { kind: 'idle' }
-      : { kind: 'awaitingInput', pendingTools: pending, sinceMs: decidedAt };
+    if (age > TURN_WAITING_STALE_MS) return { kind: 'idle' };
+    const question = questionText(questionInputs.get(asked.id));
+    return {
+      kind: 'awaitingInput',
+      pendingTools: pending,
+      ...(question === undefined ? {} : { question }),
+      sinceMs: decidedAt,
+    };
   }
   const clock = Math.max(clocks.leadMtimeMs, ...(clocks.subagentMtimesMs ?? []));
   const longRunner = pending.some((t) => traits.longRunningTools.has(t.name));
