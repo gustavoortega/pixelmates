@@ -169,10 +169,19 @@ describe('health tick', () => {
 
   /** A real process whose name is `name`: a link to sleep, so `ps` reports that name. */
   async function processNamed(name: string): Promise<number> {
-    const sleep = fs.existsSync('/bin/sleep') ? '/bin/sleep' : '/usr/bin/sleep';
+    // The node binary under another name: the process name is the file name it runs from. A
+    // symlink to sleep is not enough, since a multicall sleep (rust coreutils on newer Ubuntu)
+    // reads its own name and exits at once on one it does not know.
     const link = path.join(tmp, 'bin', name);
-    if (!fs.existsSync(link)) fs.symlinkSync(sleep, link);
-    const child = spawn(link, ['60'], { stdio: 'ignore' });
+    if (!fs.existsSync(link)) {
+      try {
+        fs.linkSync(process.execPath, link);
+      } catch {
+        fs.copyFileSync(process.execPath, link);
+        fs.chmodSync(link, 0o755);
+      }
+    }
+    const child = spawn(link, ['-e', 'setTimeout(() => {}, 60_000)'], { stdio: 'ignore' });
     children.push(child);
     await new Promise((resolve) => child.once('spawn', resolve));
     return child.pid!;
