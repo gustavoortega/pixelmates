@@ -53,11 +53,22 @@ function pidRunning(pid: number): boolean {
   }
 }
 
-/** Names a Claude Code session runs under: the native binary, or the npm package under node
- *  or bun. Anything else at that pid is a later process that reused it. */
+/** A native install's own binary, `~/.local/share/claude/versions/<version>`: background
+ *  sessions run it directly, so its process name is the bare version (Linux shows only that). */
+const VERSIONED_BINARY = /^\d+\.\d+\.\d+([.+-][\w.]*)?$/;
+
+/** Names a Claude Code session runs under: the native binary (by its launcher name or its
+ *  versioned file), or the npm package under node or bun. Anything else at that pid is a later
+ *  process that reused it. */
 function isSessionProcess(comm: string): boolean {
   const base = path.basename(comm.trim()).toLowerCase();
-  return base === 'claude' || base === 'node' || base === 'bun' || base.includes('claude');
+  return (
+    base === 'claude' ||
+    base === 'node' ||
+    base === 'bun' ||
+    base.includes('claude') ||
+    VERSIONED_BINARY.test(base)
+  );
 }
 
 /** Running pids whose process is not Claude Code: the session died and its pid was reused.
