@@ -401,6 +401,8 @@ describe('health tick', () => {
       sessionFile('node', await processNamed('node'));
       sessionFile('bun', await processNamed('bun'));
       sessionFile('native', await processNamed('claude'));
+      // A background session runs the versioned binary itself: its name is the bare version.
+      sessionFile('versioned', await processNamed('2.1.304'));
       // A resume runs the same session under a new pid; the old file stays behind.
       sessionFile('resumed', gone, 'old.json');
       sessionFile('resumed', await processNamed('claude'), 'new.json');
@@ -412,6 +414,7 @@ describe('health tick', () => {
         'node',
         'bun',
         'native',
+        'versioned',
         'resumed',
         'missing',
       ]);
@@ -421,6 +424,7 @@ describe('health tick', () => {
         node: 'alive',
         bun: 'alive',
         native: 'alive',
+        versioned: 'alive',
         resumed: 'alive',
         missing: 'unknown',
       });
