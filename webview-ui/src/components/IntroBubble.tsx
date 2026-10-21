@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { DISCORD_INVITE_URL } from '../changelogData.js';
+import { ISSUES_URL } from '../changelogData.js';
 import {
   CLAUDE_CODE_INSTALL_COMMAND,
   CLAUDE_CODE_URL,
@@ -12,7 +12,7 @@ import type { ConsentChoice } from '../hooks/introTourState.js';
 import { useFrame } from '../hooks/useFrame.js';
 import { requestRedraw } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
-import { DiscordIcon } from './ChangelogModal.js';
+import { GitHubIcon } from './ChangelogModal.js';
 import { computeIntroBubbleGeometry } from './introBubbleGeometry.js';
 import { Button } from './ui/Button.js';
 import { Checkbox } from './ui/Checkbox.js';
@@ -345,18 +345,17 @@ export function IntroBubble({
               </p>
             ) : null}
             <p className="text-sm m-0 mb-8">
-              Enjoy your new office! Questions, ideas, or pixel art to show off? Come hang out in
-              our Discord.
+              Enjoy your new office! A bug or an idea? Open an issue on GitHub.
             </p>
             <p className="text-base text-center m-0 mt-12 mb-12">
               <a
-                href={DISCORD_INVITE_URL}
+                href={ISSUES_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-8 text-accent-bright hover:text-accent no-underline"
               >
-                <DiscordIcon />
-                Join our Discord!
+                <GitHubIcon />
+                Open an issue
               </a>
             </p>
           </>
