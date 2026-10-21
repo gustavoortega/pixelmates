@@ -23,7 +23,7 @@ export function toMajorMinor(version: string): string {
 
 export const CHANGELOG_REPO_URL = 'https://github.com/gustavoortega/pixelmates';
 
-export const DISCORD_INVITE_URL = 'https://discord.gg/Yk7jXebv9H';
+export const ISSUES_URL = `${CHANGELOG_REPO_URL}/issues`;
 
 export const changelogEntries: ChangelogEntry[] = [
   {
