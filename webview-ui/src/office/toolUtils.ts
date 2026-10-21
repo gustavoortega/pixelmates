@@ -205,6 +205,11 @@ export function xpPopLabel(e: { amount: number; signal?: RosterEventSignal }): s
   return `+${e.amount} ${work ?? 'XP'}`;
 }
 
+/** The level-up banner: `Level 13!`, or with a name (the story scene's `&banner=1`) `Ada Lv13`. */
+export function levelBannerLabel(level: number, name?: string): string {
+  return name ? `${name} Lv${level}` : `Level ${level}!`;
+}
+
 /** `text` cut to `max` code points with an ellipsis; a surrogate pair is never split. */
 function ellipsize(text: string, max: number): string {
   const points = Array.from(text);

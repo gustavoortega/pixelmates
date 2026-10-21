@@ -34,11 +34,20 @@ import {
   type MonitorSeating,
   parseHeroScene,
   parseMonitorScene,
+  type SceneCamera,
   seatHeroAgents,
-  seatMonitorAlan,
+  seatMonitorCast,
   startHeroStage,
   startMonitorStage,
 } from './heroScene.ts';
+import {
+  areaCenter,
+  clampPan,
+  panForPoint,
+  type Point,
+  type RoomLayout,
+  roomsOf,
+} from './office/camera.ts';
 
 interface MockPayload {
   characters: CharacterDirectionSprites[];
@@ -256,6 +265,10 @@ export function dispatchMockMessages(host?: {
   office: HeroOffice & MonitorSeating;
   /** Fix the camera at this zoom (fit-to-activity stops). */
   setZoom: (zoom: number) => void;
+  /** The layout the rooms are read from (the scene's `&camera=`). */
+  roomLayout: () => RoomLayout;
+  /** Put the camera at this pan (device px), as a drag would. */
+  setPan: (pan: Point) => void;
 }): void {
   if (!mockPayload) return;
 
@@ -319,11 +332,13 @@ export function dispatchMockMessages(host?: {
 
   if (monitor && host && !monitorStaged) {
     monitorStaged = true;
-    const { baseMs, at } = startMonitorStage(Date.now, monitor.clock);
-    seatMonitorAlan(host.office);
+    const { baseMs, at } = startMonitorStage(Date.now, monitor.clock, monitor);
+    seatMonitorCast(host.office, monitor.seat);
     // Caught up first, as after a real handshake: from here a helper the page sees spawn gets a
     // start, so the inspector's rows count minutes from each helper's own start time.
     dispatch({ type: 'handshakeDone' });
+    if (monitor.zoom) host.setZoom(monitor.zoom);
+    if (monitor.camera) frameMonitorCamera(host, monitor);
     for (const msg of monitorMessages(baseMs, monitor)) {
       const startedAt = monitorHelperStart(msg, baseMs);
       if (startedAt === undefined) dispatch(msg);
@@ -333,6 +348,7 @@ export function dispatchMockMessages(host?: {
     host.office.selectedAgentId = null;
     if (monitor.freeze) host.office.frozen = true;
     hideHud(monitor);
+    if (monitor.plaques) keepPlaques(monitor.plaques);
   }
 
   console.log('[BrowserMock] Messages dispatched');
@@ -343,8 +359,9 @@ export function dispatchMockMessages(host?: {
  * rail and sheet stay out of it. `&hud=office` keeps the rail and the sheet and drops the rest.
  * `&freeze=1` alone drops the connection pill, which a recording must never catch mid-connect.
  */
-function hideHud(o: Pick<HeroSceneOptions, 'hud' | 'hudOffice' | 'freeze'>): void {
+function hideHud(o: Pick<HeroSceneOptions, 'hud' | 'hudOffice' | 'freeze' | 'pace'>): void {
   const hidden: string[] = [];
+  if (!o.pace) hidden.push('[data-testid="pace-panel"]');
   if (!o.hud) {
     hidden.push(
       '[data-testid="stage-clock"]',
@@ -358,5 +375,50 @@ function hideHud(o: Pick<HeroSceneOptions, 'hud' | 'hudOffice' | 'freeze'>): voi
   if (hidden.length === 0) return;
   const style = document.createElement('style');
   style.textContent = hidden.join(', ') + ' { display: none !important; }';
+  document.head.appendChild(style);
+}
+
+/** The camera's pan settles a few ticks after a zoom change (the canvas re-anchors on it), so the scene frames twice. */
+const CAMERA_SETTLE_MS = [100, 600];
+
+/**
+ * `&camera=STUDIO[:dx,dy]` (dev only): centres that Area in the stage column the capture crop keeps
+ * (`&crop=`), or in the whole canvas without one. Also reachable as `fitArea(name)` on the test hooks.
+ */
+function frameMonitorCamera(
+  host: { roomLayout: () => RoomLayout; setPan: (pan: Point) => void },
+  o: Pick<HeroSceneOptions, 'camera' | 'crop' | 'zoom'>,
+): void {
+  const frame = (cam: SceneCamera): boolean => {
+    const canvas = document.querySelector('canvas');
+    const layout = host.roomLayout();
+    const center = areaCenter(roomsOf(layout), cam.area);
+    if (!canvas || !center) return false;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    // The zoom the canvas is at: its own, not the option (a zoom the scene did not ask for still frames).
+    const zoom = o.zoom ?? Math.round(2 * dpr);
+    const stage = o.crop
+      ? { x: (rect.left + o.crop.width) / 2 - rect.left, y: o.crop.height / 2 - rect.top }
+      : { x: rect.width / 2, y: rect.height / 2 };
+    const map = { cols: layout.cols, rows: layout.rows };
+    const view = { width: canvas.width, height: canvas.height };
+    const at = { x: center.x + cam.dx, y: center.y + cam.dy };
+    const pan = panForPoint(at, stage, view, dpr, map, zoom);
+    host.setPan(cam.free ? pan : clampPan(pan, view, map, zoom));
+    return true;
+  };
+  if (!o.camera) return;
+  const cam = o.camera;
+  for (const ms of CAMERA_SETTLE_MS) setTimeout(() => frame(cam), ms);
+  const hooks = (window.__pixelAgentsTestHooks ??= {});
+  hooks.fitArea = (name) => frame({ area: name, dx: 0, dy: 0, free: false });
+}
+
+/** `&plaques=Studio,Lab`: every other room's plaque is hidden (the plaque carries its Area's label in `data-area`). */
+function keepPlaques(areas: string[]): void {
+  const style = document.createElement('style');
+  const kept = areas.map((a) => `:not([data-area="${CSS.escape(a)}"])`).join('');
+  style.textContent = `[data-testid="room-plaque"]${kept} { display: none !important; }`;
   document.head.appendChild(style);
 }

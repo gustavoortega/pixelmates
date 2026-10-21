@@ -13,14 +13,17 @@ import { test } from 'vitest';
 
 import { monitorLayout } from '../src/components/monitorLayout.js';
 import {
+  areaCenter,
   AutoFit,
   type AutoFitInput,
+  centerForPan,
   clampPan,
   fitTarget,
   fitView,
   fitZoomWholeMap,
   followPan,
   panAfterZoom,
+  panForPoint,
   type Point,
   refitView,
   roomsOf,
@@ -334,4 +337,26 @@ test('camera follow: the same pan at 30 and 60 fps, then it lands on the legal g
     'same pan at either rate',
   );
   assert.deepEqual(follow(30, 5), { pan: { x: -300, y: 120 }, settled: true });
+});
+
+// ── Scene camera: a room framed inside the part of the stage a capture keeps ──
+
+test('panForPoint: the world point lands under the requested screen point', () => {
+  const canvas = { width: 2000, height: 1600 };
+  const map = { cols: 25, rows: 20 };
+  const dpr = 2;
+  const zoom = 6;
+  const at = { x: 137, y: 88 };
+  const screen = { x: 290, y: 247 };
+  const pan = panForPoint(at, screen, canvas, dpr, map, zoom);
+  const centre = centerForPan(pan, map, zoom);
+  // The canvas centre shows `centre`; `at` sits (at - centre) * zoom device px from it.
+  assert.equal(canvas.width / 2 + (at.x - centre.x) * zoom, screen.x * dpr);
+  assert.equal(canvas.height / 2 + (at.y - centre.y) * zoom, screen.y * dpr);
+});
+
+test('areaCenter: the middle of the Area box, matched without case, and null for none', () => {
+  const rooms = { boxes: new Map([['Studio', box(2, 4, 5, 7)]]), lounge: null };
+  assert.deepEqual(areaCenter(rooms, 'STUDIO'), { x: 64, y: 96 });
+  assert.equal(areaCenter(rooms, 'Den'), null);
 });

@@ -13,9 +13,9 @@ import {
 } from '../../constants.js';
 import type { OfficeState } from '../engine/officeState.js';
 import type { Rect } from '../labelLayout.js';
-import { sceneFxMultiplier, spriteHeadTopY } from '../nameplate.js';
+import { isSceneBanner, sceneFxMultiplier, spriteHeadTopY } from '../nameplate.js';
 import { seatedDrawOffsetPx } from '../seatDraw.js';
-import { xpPopLabel } from '../toolUtils.js';
+import { levelBannerLabel, xpPopLabel } from '../toolUtils.js';
 
 const FX_TEXT_Z_INDEX = 41;
 /** The staged scene's pop rises this far at most, so it tops out over the plate and not on the wall. */
@@ -97,6 +97,9 @@ export function FxText({
         const t = Math.min(1, age / FX_LEVEL_UP_MS);
         // Pops in over the first tenth, holds, shrinks away over the last tenth.
         const grow = Math.min(1, t / 0.1, (1 - t) / 0.1);
+        // The story scene names who levelled, on the ink box of its pops: the wall and the
+        // pillar are too busy under a bare yellow word at GIF size.
+        const named = isSceneBanner();
         return (
           <div
             key={`lvl-${e.agentId}-${e.startedAt}`}
@@ -107,13 +110,23 @@ export function FxText({
               transform: `translate(-50%, -100%) scale(${scale * grow})`,
               fontSize: FX_BANNER_FONT_PX * sceneFxMultiplier(),
               color: FX_TEXT_COLOR,
-              textShadow: OUTLINE,
+              textShadow: named ? undefined : OUTLINE,
+              ...(named
+                ? {
+                    background: NAMEPLATE_BG,
+                    border: `${NAMEPLATE_BORDER_PX}px solid ${NAMEPLATE_BORDER_COLOR}`,
+                    padding: '6px 10px',
+                  }
+                : {}),
               pointerEvents: 'none',
               zIndex: FX_TEXT_Z_INDEX,
             }}
             data-testid="fx-level-up"
           >
-            {`Level ${e.level}!`}
+            {levelBannerLabel(
+              e.level,
+              named ? officeState.rosters.get(e.agentId)?.name : undefined,
+            )}
           </div>
         );
       })}

@@ -6,7 +6,7 @@ npx pixelmates
 ```
 
 <p align="center">
-  <img src="docs/images/hero.gif" alt="A character commits and opens a PR, a +120 pop shows and its level rises; another desk lights up" width="880">
+  <img src="docs/images/story.gif" alt="Rail: Ada waited 12 minutes on Allow git push, Grace stuck on failing tests; Alan asks a question and his desk lights; Ada ships a PR, +120, level 13; P masks the text." width="880">
 </p>
 
 pixelmates is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). The engine, the hooks and the layout editor are his work; the art is redrawn by code in this fork.
@@ -25,8 +25,6 @@ Your office is copied from `~/.pixel-agents` on first run; nothing there is chan
 
 ## Who needs you
 
-<img src="docs/images/needs-you.gif" alt="A question ticket slides into the rail with the question text, and the asking agent's desk lights up" width="880">
-
 Enter inspects, the arrow keys select, P masks session text. A session that is stuck, looping or stalled is named in the rail.
 
 ## Privacy
@@ -36,6 +34,8 @@ Enter inspects, the arrow keys select, P masks session text. A session that is s
 The MCP reads transcripts on this machine and redacts secrets. pixelmates sends nothing off the machine; what the MCP returns reaches Claude like any other tool result.
 
 ## A crew that remembers
+
+<img src="docs/images/crew.gif" alt="Ada commits and a +60 commit pop shows, then she opens a PR and a +120 PR pop shows, and her level goes from 12 to 13" width="880">
 
 Each session is a named character that keeps its level across restarts. XP comes only from what your transcripts prove: commit +60, PR created +120, PR merged +200, tests green after an edit +40.
 
