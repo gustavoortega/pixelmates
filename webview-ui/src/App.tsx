@@ -96,6 +96,11 @@ function App() {
             autoFit.disable();
             handleZoomChange(z);
           },
+          roomLayout: () => getOfficeState().getLayout(),
+          setPan: (pan) => {
+            editor.panRef.current = pan;
+            requestRedraw();
+          },
         }),
       );
     }

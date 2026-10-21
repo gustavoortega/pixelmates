@@ -118,6 +118,8 @@ declare global {
        *  (canvas, so no DOM), the rooms a tag may fill, the crew banners with their wall band, the
        *  room plaques. */
       getTagLayout?: () => TagLayoutSnapshot;
+      /** Dev scenes only (`&camera=`): centre a named Area in the stage; false when there is none. */
+      fitArea?: (name: string) => boolean;
       /** Open or close the inspector sheet the way the keys do (sheetControl.ts). */
       openSheet?: () => void;
       closeSheet?: () => void;

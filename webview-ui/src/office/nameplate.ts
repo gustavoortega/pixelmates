@@ -141,7 +141,36 @@ export function plateLine2Metrics(): { font: number; line: number } {
 /** The scene's pop and banner multiplier: pops stay at the 36 px floor, not the plate text's size. */
 export const SCENE_FX_TEXT_SCALE = 1.2;
 export function sceneFxMultiplier(): number {
-  return isSceneTwoLinePlates() ? SCENE_FX_TEXT_SCALE : 1;
+  return isSceneTwoLinePlates() || sceneMonitorText > 1 ? SCENE_FX_TEXT_SCALE : 1;
+}
+
+let sceneMonitorText = 1;
+let sceneBanner = false;
+
+/**
+ * Dev-only (the story GIF, `&text=1.2` in the monitor scene): grows the monitor's office text (tags,
+ * helper tags, plaques) so it clears the legibility floor once the capture is cropped, and sets pops
+ * and the banner on an ink box like the hero's. The rail's own text is untouched.
+ */
+export function setSceneMonitorText(mul: number): void {
+  sceneMonitorText = mul;
+}
+
+/** Dev-only (`&banner=1`): the level-up banner reads `Ada Lv13` instead of `Level 13!`. */
+export function setSceneBanner(on: boolean): void {
+  sceneBanner = on;
+}
+
+export function isSceneBanner(): boolean {
+  return sceneBanner;
+}
+
+/** Every size of a monitor type set grown by the scene's factor (1: as is), whole px. */
+function scaledMonitorType(t: MonitorType): MonitorType {
+  if (sceneMonitorText === 1) return t;
+  return Object.fromEntries(
+    Object.entries(t).map(([k, v]) => [k, Math.floor(v * sceneMonitorText)]),
+  ) as unknown as MonitorType;
 }
 
 /** The scene's plates float this far (CSS px) above where the head slot would put them, clear of a napper's Zz. */
@@ -213,7 +242,7 @@ let tagType: MonitorType = TAG_LARGE;
 
 /** The overlay sets the map's CSS zoom (zoom / dpr) before it measures any tag. */
 export function setMonitorTagZoom(cssZoom: number): void {
-  tagType = monitorType(cssZoom);
+  tagType = scaledMonitorType(monitorType(cssZoom));
 }
 
 /** The monitor type set the overlay last chose. */

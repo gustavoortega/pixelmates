@@ -17,7 +17,13 @@ import { requestRedraw } from './office/engine/gameLoop.js';
 import { setSceneNapZzDrop } from './office/engine/renderer.js';
 import type { ActiveFx } from './office/fx/fxEngine.js';
 import { setSceneStormScale } from './office/fx/fxRender.js';
-import { forceFullPlates, setSceneTextScale, setSceneTwoLinePlates } from './office/nameplate.js';
+import {
+  forceFullPlates,
+  setSceneBanner,
+  setSceneMonitorText,
+  setSceneTextScale,
+  setSceneTwoLinePlates,
+} from './office/nameplate.js';
 import { IdlePose } from './office/types.js';
 
 /** Layout the scene loads instead of the bundled default, relative to the assets base. */
@@ -71,6 +77,66 @@ export interface HeroSceneOptions {
   workflow: boolean;
   /** `&clock=HH:MM`: pins the scene's hour instead of the scene's own. */
   clock: { hour: number; minute: number } | null;
+  /** `&seat=Ada:STUDIO:0,...`: the monitor scene seats these agents by room and seat order (null: Alan alone, first STUDIO desk). */
+  seat: SceneSeat[] | null;
+  /** `&camera=STUDIO` or `STUDIO:dx,dy`: the monitor scene centres that Area, plus a world px shift, in the stage. */
+  camera: SceneCamera | null;
+  /** `&pace=0`: the rail's usage panel is hidden (the social preview shows no limits or percentages). */
+  pace: boolean;
+  /** `&plaques=Studio`: only these Areas keep their room plaque (null: all), so a caption card never sits on a neighbour's. */
+  plaques: string[] | null;
+  /** `&crop=880x495`: the capture's crop in page CSS px from the top left; the camera centres its Area in what that keeps right of the rail (null: the whole canvas). */
+  crop: { width: number; height: number } | null;
+  /** `&banner=1`: the level-up banner reads `Ada Lv13` (monitor scene) and Ada starts at level 12. */
+  banner: boolean;
+}
+
+/** One cast member's seat: the agent's name, the Area's label and the seat's place in that Area's row-major order. */
+export interface SceneSeat {
+  name: string;
+  area: string;
+  index: number;
+}
+
+/** The Area a scene centres in the stage, with a shift in world px (the stage is narrower than the room). */
+export interface SceneCamera {
+  area: string;
+  dx: number;
+  dy: number;
+  /** `:free`: the pan is not clamped to the map, so a room at the map's edge can still be centred (void shows beyond it). */
+  free: boolean;
+}
+
+/** `Ada:STUDIO:0,Alan:STUDIO:2`; an entry that does not parse is dropped, none left is null. */
+export function parseSceneSeats(raw: string | null): SceneSeat[] | null {
+  const seats: SceneSeat[] = [];
+  for (const entry of (raw ?? '').split(',')) {
+    const [name, area, index] = entry.split(':');
+    const i = Number(index);
+    if (name && area && index !== undefined && Number.isInteger(i) && i >= 0) {
+      seats.push({ name, area, index: i });
+    }
+  }
+  return seats.length > 0 ? seats : null;
+}
+
+/** `880x495`. */
+export function parseSceneCrop(raw: string | null): { width: number; height: number } | null {
+  const m = /^(\d{2,5})x(\d{2,5})$/.exec(raw ?? '');
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : null;
+}
+
+/** `STUDIO`, `STUDIO:-32,0` or `STUDIO:0,-14:free`. */
+export function parseSceneCamera(raw: string | null): SceneCamera | null {
+  const [area, shift, free] = (raw ?? '').split(':');
+  if (!area) return null;
+  const [dx, dy] = (shift ?? '').split(',').map(Number);
+  return {
+    area,
+    dx: Number.isFinite(dx) ? dx : 0,
+    dy: Number.isFinite(dy) ? dy : 0,
+    free: free === 'free',
+  };
 }
 
 /** The options every dev scene shares, read from the query string. */
@@ -95,6 +161,12 @@ function parseSceneOptions(params: URLSearchParams): HeroSceneOptions {
     agents: agents.length > 0 ? agents : null,
     workflow: params.get('workflow') !== '0',
     clock: hour >= 0 && hour < 24 && minute >= 0 && minute < 60 ? { hour, minute } : null,
+    seat: parseSceneSeats(params.get('seat')),
+    camera: parseSceneCamera(params.get('camera')),
+    crop: parseSceneCrop(params.get('crop')),
+    pace: params.get('pace') !== '0',
+    plaques: params.get('plaques')?.split(',').filter(Boolean) ?? null,
+    banner: params.get('banner') === '1',
   };
 }
 
@@ -382,6 +454,8 @@ const MONITOR_MODELS = {
   4: 'claude-fable-5-1',
 } as const;
 
+/** The story's Ada is level 12 until her PR lands (`&banner=1`): the banner then says 13. */
+const STORY_ADA_LEVEL = 12;
 export const MONITOR_HOUR = 15;
 export const MONITOR_MINUTE = 20;
 const MIN_MS = 60_000;
@@ -545,7 +619,7 @@ export function monitorHelperStart(msg: ServerMessage, baseMs: number): number |
  * What the scene sends after the layout loads, in the order the real server would, with every
  * time relative to `baseMs` (the scene's clock, on the minute).
  */
-function allMonitorMessages(baseMs: number): ServerMessage[] {
+function allMonitorMessages(baseMs: number, ada12 = false): ServerMessage[] {
   const ago = (min: number): number => baseMs - min * MIN_MS;
   const out: ServerMessage[] = [
     {
@@ -588,9 +662,9 @@ function allMonitorMessages(baseMs: number): ServerMessage[] {
       id: a.id,
       memberId: `monitor-${a.name.toLowerCase()}`,
       name: a.name,
-      level: 3 + a.id,
-      xp: 40 * a.id,
-      xpToNext: 400,
+      level: ada12 && a.id === 1 ? STORY_ADA_LEVEL : 3 + a.id,
+      xp: ada12 && a.id === 1 ? 640 : 40 * a.id,
+      xpToNext: ada12 && a.id === 1 ? 900 : 400,
       streak: a.id % 3,
       mood: a.id === 3 ? 'frustrated' : 'neutral',
     });
@@ -762,9 +836,12 @@ function allMonitorMessages(baseMs: number): ServerMessage[] {
  */
 export function monitorMessages(
   baseMs: number,
-  opts: Pick<HeroSceneOptions, 'agents' | 'workflow'> = { agents: null, workflow: true },
+  opts: Pick<HeroSceneOptions, 'agents' | 'workflow'> & { banner?: boolean } = {
+    agents: null,
+    workflow: true,
+  },
 ): ServerMessage[] {
-  const all = allMonitorMessages(baseMs);
+  const all = allMonitorMessages(baseMs, opts.banner === true);
   if (!opts.agents && opts.workflow) return all;
   const lead = MONITOR_WORKFLOW.leadId;
   const out = all.filter((m) => {
@@ -800,15 +877,18 @@ export interface MonitorSeating {
 
 /**
  * Alan sits at the first STUDIO desk (top row, leftmost chair), where the README's ticket beat
- * lights him up. Seated before his `agentCreated` arrives, like the hero's four.
+ * lights him up. Seated before his `agentCreated` arrives, like the hero's four. `&seat=` seats a
+ * whole cast instead: each name in its Area's seat order (top row first, left to right).
  */
-export function seatMonitorAlan(os: MonitorSeating): void {
-  const alan = MONITOR_AGENTS.find((a) => a.name === 'Alan');
-  if (!alan) return;
-  const first = [...os.seats]
-    .filter(([uid]) => os.seatZone(uid) === 'Studio')
-    .sort(([, a], [, b]) => a.seatRow - b.seatRow || a.seatCol - b.seatCol)[0];
-  if (first) os.addAgent(alan.id, alan.id - 1, 0, first[0], true, alan.folder);
+export function seatMonitorCast(os: MonitorSeating, seats: SceneSeat[] | null): void {
+  const cast = seats ?? [{ name: 'Alan', area: 'Studio', index: 0 }];
+  for (const want of cast) {
+    const agent = MONITOR_AGENTS.find((a) => a.name === want.name);
+    const uid = [...os.seats]
+      .filter(([id]) => os.seatZone(id)?.toLowerCase() === want.area.toLowerCase())
+      .sort(([, a], [, b]) => a.seatRow - b.seatRow || a.seatCol - b.seatCol)[want.index]?.[0];
+    if (agent && uid) os.addAgent(agent.id, agent.id - 1, 0, uid, true, agent.folder);
+  }
 }
 
 /**
@@ -819,6 +899,7 @@ export function seatMonitorAlan(os: MonitorSeating): void {
 export function startMonitorStage(
   nowMs: () => number = Date.now,
   pin: SceneClockPin | null = null,
+  style: Pick<HeroSceneOptions, 'text' | 'banner'> = { text: 1, banner: false },
 ): {
   baseMs: number;
   at: (ms: number, fn: () => void) => void;
@@ -826,6 +907,8 @@ export function startMonitorStage(
 } {
   const clock = (): Date => monitorClock(nowMs(), pin);
   overrideOfficeClock(clock);
+  setSceneMonitorText(style.text);
+  setSceneBanner(style.banner);
   const start = officeNow();
   start.setSeconds(0, 0);
   return {
@@ -838,6 +921,10 @@ export function startMonitorStage(
         overrideOfficeClock(clock);
       }
     },
-    stop: () => overrideOfficeClock(null),
+    stop: () => {
+      overrideOfficeClock(null);
+      setSceneMonitorText(1);
+      setSceneBanner(false);
+    },
   };
 }

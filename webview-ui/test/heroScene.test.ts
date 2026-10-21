@@ -22,16 +22,24 @@ import {
   parseHeroScene,
   parseMonitorScene,
   seatHeroAgents,
+  seatMonitorCast,
   startHeroStage,
 } from '../src/heroScene.js';
 import { officeNow } from '../src/office/clock.js';
 import { FxText } from '../src/office/components/FxText.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
 import { createPet } from '../src/office/engine/petEntity.js';
-import { plateIsCompact, plateScale } from '../src/office/nameplate.js';
+import {
+  currentMonitorType,
+  plateIsCompact,
+  plateScale,
+  sceneFxMultiplier,
+  setMonitorTagZoom,
+  setSceneMonitorText,
+} from '../src/office/nameplate.js';
 import { type PlateState, sceneTwoLinePlate } from '../src/office/plateState.js';
 import { shaftRects } from '../src/office/shafts.js';
-import { type NameplateContent, xpPopLabel } from '../src/office/toolUtils.js';
+import { levelBannerLabel, type NameplateContent, xpPopLabel } from '../src/office/toolUtils.js';
 import type { OfficeLayout } from '../src/office/types.js';
 import { Direction, IdlePose, TileType, WorkStatus } from '../src/office/types.js';
 import { loadRealAssets } from './realAssets.js';
@@ -198,6 +206,12 @@ describe('hero scene request', () => {
       agents: null,
       workflow: true,
       clock: { hour: 21, minute: 10 },
+      seat: null,
+      camera: null,
+      crop: null,
+      pace: true,
+      plaques: null,
+      banner: false,
     });
     expect(parseHeroScene('?scene=hero&text=9&zoom=2.5&clock=25:00')).toMatchObject({
       pops: true,
@@ -218,6 +232,78 @@ describe('monitor scene recording options', () => {
     const ids = new Set(msgs.flatMap((m) => ('id' in m && typeof m.id === 'number' ? [m.id] : [])));
     expect([...ids].sort()).toEqual([1, 2, 3, 4]);
     expect(monitorMessages(1_000_000_000).some((m) => m.type === 'workflowRun')).toBe(true);
+  });
+});
+
+describe('story scene hooks (camera, seating, banner, monitor text)', () => {
+  it('stay off unless the query asks, so a plain monitor scene is as before', () => {
+    expect(parseMonitorScene('?scene=monitor')).toMatchObject({
+      seat: null,
+      camera: null,
+      crop: null,
+      pace: true,
+      plaques: null,
+      banner: false,
+    });
+    expect(
+      parseMonitorScene(
+        '?scene=monitor&seat=Ada:STUDIO:0,bad,Alan:STUDIO:x&camera=STUDIO:-40,-8:free&crop=880x495&plaques=&banner=1&pace=0',
+      ),
+    ).toMatchObject({
+      seat: [{ name: 'Ada', area: 'STUDIO', index: 0 }],
+      camera: { area: 'STUDIO', dx: -40, dy: -8, free: true },
+      crop: { width: 880, height: 495 },
+      plaques: [],
+      pace: false,
+      banner: true,
+    });
+  });
+
+  it('&banner=1 starts Ada at level 12 and names her on the banner; without it nothing changes', () => {
+    const level = (opts?: { banner: boolean }): unknown =>
+      monitorMessages(1_000_000_000, { agents: null, workflow: true, ...opts }).find(
+        (m) => m.type === 'agentRoster' && m.id === 1,
+      );
+    expect(level({ banner: true })).toMatchObject({ level: 12 });
+    expect(level()).toMatchObject({ level: 4 });
+    expect(levelBannerLabel(13, 'Ada')).toBe('Ada Lv13');
+    expect(levelBannerLabel(13)).toBe('Level 13!');
+  });
+
+  it('seatMonitorCast seats each name by its Area seat order; with no cast only Alan, first STUDIO desk', () => {
+    const seats = new Map([
+      ['b', { seatCol: 3, seatRow: 1 }],
+      ['a', { seatCol: 2, seatRow: 1 }],
+      ['c', { seatCol: 9, seatRow: 0 }],
+      ['x', { seatCol: 0, seatRow: 0 }],
+    ]);
+    const seated: Array<[number, string]> = [];
+    const os = {
+      seats,
+      seatZone: (uid: string) => (uid === 'x' ? 'Den' : 'Studio'),
+      addAgent: (id: number, _p: number, _h: number, uid: string) => void seated.push([id, uid]),
+    };
+    seatMonitorCast(os, null);
+    expect(seated).toEqual([[2, 'c']]);
+    seated.length = 0;
+    seatMonitorCast(os, [
+      { name: 'Ada', area: 'studio', index: 2 },
+      { name: 'Grace', area: 'Studio', index: 9 },
+    ]);
+    expect(seated).toEqual([[1, 'b']]);
+  });
+
+  it('&text=1.2 grows the monitor tag type and the pop text, and 1 puts both back', () => {
+    setMonitorTagZoom(3);
+    const plain = { ...currentMonitorType() };
+    setSceneMonitorText(1.2);
+    setMonitorTagZoom(3);
+    expect(currentMonitorType()).toMatchObject({ name: 28, state: 24 });
+    expect(sceneFxMultiplier()).toBeGreaterThan(1);
+    setSceneMonitorText(1);
+    setMonitorTagZoom(3);
+    expect(currentMonitorType()).toEqual(plain);
+    expect(sceneFxMultiplier()).toBe(1);
   });
 });
 

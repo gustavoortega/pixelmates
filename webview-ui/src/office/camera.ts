@@ -402,6 +402,42 @@ export function panForCenter(center: Point, map: MapSize, zoom: number): Point {
   };
 }
 
+/**
+ * Pan (device px) that puts the world point `at` under `screen` (CSS px from the canvas's top left),
+ * for a canvas of `canvas` device px at `zoom` (device px per world px). The scenes use it to seat a
+ * room inside the part of the stage a crop keeps.
+ */
+export function panForPoint(
+  at: Point,
+  screen: Point,
+  canvas: { width: number; height: number },
+  dpr: number,
+  map: MapSize,
+  zoom: number,
+): Point {
+  return panForCenter(
+    {
+      x: at.x - (screen.x * dpr - canvas.width / 2) / zoom,
+      y: at.y - (screen.y * dpr - canvas.height / 2) / zoom,
+    },
+    map,
+    zoom,
+  );
+}
+
+/** World px centre of a room (an Area's tile box), or null when the layout has no such Area (case ignored). */
+export function areaCenter(rooms: Rooms, label: string): Point | null {
+  for (const [key, box] of rooms.boxes) {
+    if (key !== LOBBY_ROOM && key.toLowerCase() === label.toLowerCase()) {
+      return {
+        x: ((box.col0 + box.col1 + 1) / 2) * TILE_SIZE,
+        y: ((box.row0 + box.row1 + 1) / 2) * TILE_SIZE,
+      };
+    }
+  }
+  return null;
+}
+
 /** Centre currently framed by a pan; the inverse of panForCenter. */
 export function centerForPan(pan: Point, map: MapSize, zoom: number): Point {
   return {
