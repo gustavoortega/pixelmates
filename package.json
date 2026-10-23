@@ -1,5 +1,5 @@
 {
-  "name": "pixelmates",
+  "name": "@pixelmates/cli",
   "displayName": "pixelmates",
   "description": "Your Claude Code sessions as a pixel office that tells you who needs you.",
   "version": "1.0.0",
@@ -27,6 +27,9 @@
   ],
   "icon": "icon.png",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20",
     "vscode": "^1.105.0"

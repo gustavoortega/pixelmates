@@ -126,7 +126,7 @@ async function verifyInstalledTarball(tarballPath) {
       cwd: smokeProject,
     });
 
-    const installedRoot = path.join(smokeProject, 'node_modules', 'pixelmates');
+    const installedRoot = path.join(smokeProject, 'node_modules', '@pixelmates', 'cli');
     const installedManifest = JSON.parse(
       fs.readFileSync(path.join(installedRoot, 'package.json'), 'utf-8'),
     );

@@ -60,7 +60,7 @@ test('rejects source and preview files even when required files exist', () => {
 
 test('validates release tag, ref, repository, and monotonic version', () => {
   const manifest = {
-    name: 'pixelmates',
+    name: '@pixelmates/cli',
     version: '1.4.0',
     repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
   };
@@ -110,13 +110,13 @@ test('rejects the upstream package name and a foreign repository', () => {
     latestVersion: '1.0.2',
   };
   const manifest = {
-    name: 'pixelmates',
+    name: '@pixelmates/cli',
     version: '1.4.0',
     repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
   };
   assert.throws(
     () => validateReleaseIdentity({ ...base, manifest: { ...manifest, name: 'pixel-agents' } }),
-    /Expected package name pixelmates/,
+    /Expected package name @pixelmates\/cli/,
   );
   assert.throws(
     () =>
@@ -135,7 +135,7 @@ test('a never-published package has no latest to beat', () => {
   assert.doesNotThrow(() =>
     validateReleaseIdentity({
       manifest: {
-        name: 'pixelmates',
+        name: '@pixelmates/cli',
         version: '1.0.0',
         repository: { url: 'git+https://github.com/gustavoortega/pixelmates.git' },
       },

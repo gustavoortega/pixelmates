@@ -2,7 +2,7 @@
 Your Claude Code sessions as a pixel office. The crew keeps its names and levels between restarts, and a lit desk means a session is waiting on you.
 
 ```
-npx pixelmates
+npx @pixelmates/cli
 ```
 
 <p align="center">
@@ -13,7 +13,7 @@ pixelmates is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-
 
 ## Install and run
 
-Open the URL `npx pixelmates` prints. The token in it is a secret. The server binds 127.0.0.1 and keeps its roster, layout, token and port in `~/.pixelmates/`.
+Open the URL it prints (installed with `npm i -g @pixelmates/cli`, the command is `pixelmates`). The token in it is a secret. The server binds 127.0.0.1 and keeps its roster, layout, token and port in `~/.pixelmates/`.
 
 If you say yes at the consent prompt, it also adds a hook entry to `~/.claude/settings.json`, backed up once to `settings.json.pixelmates.backup`. Undo it with "Instant Detection (Hooks)" in Settings.
 

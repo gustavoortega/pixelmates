@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 import semver from 'semver';
 
-export const EXPECTED_PACKAGE_NAME = 'pixelmates';
+export const EXPECTED_PACKAGE_NAME = '@pixelmates/cli';
 export const EXPECTED_REPOSITORY_URL = 'git+https://github.com/gustavoortega/pixelmates.git';
 
 // fastify + @fastify/{cors,static,websocket} are root runtime `dependencies` even though
