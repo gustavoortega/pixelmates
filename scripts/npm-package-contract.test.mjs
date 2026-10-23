@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   getPublicationDecision,
   normalizePackMetadata,
+  parseNpmViewField,
   parsePackJsonOutput,
   REQUIRED_PACKAGE_FILES,
   REQUIRED_PACKAGE_PREFIXES,
@@ -174,4 +175,10 @@ test('rejects a tarball changed after its metadata was created', () => {
 test('rejects a tarball over the size ceiling', () => {
   assert.doesNotThrow(() => validatePackedSize(1_100_000));
   assert.throws(() => validatePackedSize(2 * 1024 * 1024 + 1), /exceeds the 2097152 byte ceiling/);
+});
+
+test('reads one npm view field from npm 10 and npm 12 output alike', () => {
+  assert.equal(parseNpmViewField('"1.0.0"\n'), '1.0.0');
+  assert.equal(parseNpmViewField('[\n  "1.0.0"\n]\n'), '1.0.0');
+  assert.throws(() => parseNpmViewField('["1.0.0", "1.0.1"]'), /Expected one value/);
 });
