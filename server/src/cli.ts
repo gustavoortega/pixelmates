@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Standalone CLI entry point: `npx pixelmates`
+ * Standalone CLI entry point: `npx @pixelmates/cli`
  *
  * Starts the Fastify server in standalone mode with SPA serving and WebSocket.
  * Loads all assets (PNGs -> SpriteData) on startup and caches in memory.

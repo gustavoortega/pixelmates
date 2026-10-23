@@ -1,6 +1,6 @@
 # pixelmates — Compressed Reference
 
-Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow) become animated characters. Ships as a **VS Code extension** and an **`npx pixelmates` standalone CLI** from the same source tree.
+Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow) become animated characters. Ships as a **VS Code extension** and an **`npx @pixelmates/cli` standalone CLI** from the same source tree.
 
 `CONTEXT.md` is the canonical glossary — read it for what terms like Agent, Sub-agent, Teammate, Lead, Adopt, or Headless agent mean here, and use its vocabulary in code, comments, and docs.
 
@@ -77,7 +77,7 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     clientMessageHandler.ts          Single dispatch point for ClientMessage from webview
     server.ts                        Top-level composition
     serverToken.ts                   Standalone token and port across restarts: ~/.pixelmates/server-token (0600, --new-token replaces it) and server-port
-    cli.ts                           npx pixelmates entry (npm bin)
+    cli.ts                           npx @pixelmates/cli entry (npm bin)
     migrateDataDir.ts                One-time copy of layout, roster, state and settings (never the token or hooks, consent stripped) from ~/.pixel-agents when ~/.pixelmates has no config; config.json last, source never written
     fileStateAdapter.ts              Namespaced ~/.pixelmates/ persistence
     configPersistence.ts             { vscode, standalone, externalAssetDirectories, hooksConsent: {providerId: granted|declined}, hooksEnabled: {providerId: boolean} } (absent preference = HookProvider.defaultEnabled, true unless off by default)
@@ -230,7 +230,7 @@ webview-ui/                          npm workspace
 Two artifacts from one source tree:
 
 - **VS Code extension** (`.vsix`) — built from source (F5 or `vsce package`), not published. Bundles VS Code adapter + webview SPA + assets + hook scripts.
-- **npm package** (`pixelmates`) — `npx pixelmates [--port 3100] [--token <token> | --new-token]` runs the Fastify server and serves the SPA on the same port. Bundles CLI + webview SPA + assets + hook scripts + `core/asyncapi.yaml` (so third-party clients can regenerate from it).
+- **npm package** (`@pixelmates/cli`, scoped because npm refuses `pixelmates` as too close to `pixelmatch`) — `npx @pixelmates/cli [--port 3100] [--token <token> | --new-token]` runs the Fastify server and serves the SPA on the same port. Bundles CLI + webview SPA + assets + hook scripts + `core/asyncapi.yaml` (so third-party clients can regenerate from it).
 
 `package.json:files` allowlist controls what ships in the npm tarball and the `.vsix`: `CHANGELOG.md`, `LICENSE`, `dist/cli.js`, `dist/extension.js`, `dist/uninstall.js`, both bundled scripts (`dist/hooks/claude-hook.js`, `dist/hooks/statusline-tee.js`), `dist/assets/`, `dist/webview/`, `icon.png`. `scripts/npm-package-contract.mjs` and `scripts/verify-vsix-package.mjs` fail a package missing either script.
 
@@ -856,7 +856,7 @@ Supporting: `wall-tile-editor.html` (wall sprite editing), `jsonl-viewer.html` (
 
 ## Project Identity
 
-- npm package: `pixelmates` (CLI bin: `pixelmates`); the VS Code extension is not published
+- npm package: `@pixelmates/cli` (CLI bin: `pixelmates`; npm refuses the unscoped name as too close to `pixelmatch`); the VS Code extension is not published
 - Data dir: `~/.pixelmates`; `migrateDataDir.ts` copies the office once from upstream's `~/.pixel-agents`
 - GitHub: `https://github.com/gustavoortega/pixelmates` (fork of `pixel-agents-hq/pixel-agents`)
 - License: MIT
