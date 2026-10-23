@@ -1,5 +1,9 @@
 # Changelog
 
+## pixelmates 1.0.2
+
+- **Release fix.** The release script reads npm 12's `npm view --json` output, which wraps a single value in an array; 1.0.1 never reached npm because of it. 1.0.2 carries the 1.0.1 changes.
+
 ## pixelmates 1.0.1
 
 - **Node 22 or newer.** Node 20 reached end of life and the server's dependencies now ask for 22.

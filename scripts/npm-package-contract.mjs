@@ -16,6 +16,15 @@ export const EXPECTED_REPOSITORY_URL = 'git+https://github.com/gustavoortega/pix
 /** The tarball stays small: it is fetched on every `npx`. Today it is about 1.1 MB. */
 export const MAX_PACKED_BYTES = 2 * 1024 * 1024;
 
+/** One field from `npm view <spec> <field> --json`. npm 12 wraps a single value in an array
+ *  (`["1.0.0"]`) where npm 10 printed it bare (`"1.0.0"`); both mean the same value. */
+export function parseNpmViewField(stdout) {
+  const value = JSON.parse(stdout.trim());
+  if (!Array.isArray(value)) return value;
+  if (value.length === 1) return value[0];
+  throw new Error(`Expected one value from npm view, received ${value.length}`);
+}
+
 export function validatePackedSize(size) {
   if (typeof size !== 'number' || size > MAX_PACKED_BYTES) {
     throw new Error(

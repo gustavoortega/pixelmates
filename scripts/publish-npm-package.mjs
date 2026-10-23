@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   getPublicationDecision,
+  parseNpmViewField,
   validateReleaseIdentity,
   validateTarballIntegrity,
 } from './npm-package-contract.mjs';
@@ -39,7 +40,7 @@ async function npmView(args) {
     cwd: REPO_ROOT,
     maxBuffer: 1024 * 1024,
   });
-  return JSON.parse(result.stdout.trim());
+  return parseNpmViewField(result.stdout);
 }
 
 async function getPublishedIntegrity(packageId) {
