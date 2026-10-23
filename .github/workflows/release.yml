@@ -50,7 +50,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      # Trusted publishing needs npm >= 11.5.1.
+      # Staged publishing through a trusted publisher needs npm >= 11.15.0.
       - name: Install Trusted-Publishing npm CLI
         run: npm install --global npm@latest
 
@@ -59,7 +59,7 @@ jobs:
 
       - name: Verify Trusted-Publishing Toolchain
         run: |
-          node -e "const semver = require('semver'); const npm = require('child_process').execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(); if (!semver.satisfies(process.version, '>=22.14.0') || !semver.satisfies(npm, '>=11.5.1')) { throw new Error('Trusted publishing requires Node >=22.14.0 and npm >=11.5.1'); } console.log('Node', process.version, 'npm', npm);"
+          node -e "const semver = require('semver'); const npm = require('child_process').execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(); if (!semver.satisfies(process.version, '>=22.14.0') || !semver.satisfies(npm, '>=11.15.0')) { throw new Error('Staged trusted publishing requires Node >=22.14.0 and npm >=11.15.0'); } console.log('Node', process.version, 'npm', npm);"
 
       - name: Run Unit Tests
         run: npm test
@@ -80,7 +80,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # Runs `npm publish --provenance` on the verified tarball, after re-checking
+      # Runs `npm stage publish --provenance` on the verified tarball, after re-checking
       # name, repository url, tag and version against package.json.
       - name: Publish Verified Artifact to npm
         run: >-

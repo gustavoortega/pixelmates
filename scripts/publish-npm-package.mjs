@@ -65,7 +65,7 @@ async function getPublishedLatest(name) {
 
 async function npmPublish(tarballPath) {
   await new Promise((resolve, reject) => {
-    const child = spawn(npmCommand(), ['publish', tarballPath, '--provenance'], {
+    const child = spawn(npmCommand(), ['stage', 'publish', tarballPath, '--provenance'], {
       cwd: REPO_ROOT,
       env: process.env,
       stdio: 'inherit',
@@ -73,7 +73,7 @@ async function npmPublish(tarballPath) {
     child.once('error', reject);
     child.once('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`npm publish exited with code ${String(code)}`));
+      else reject(new Error(`npm stage publish exited with code ${String(code)}`));
     });
   });
 }

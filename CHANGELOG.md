@@ -1,5 +1,12 @@
 # Changelog
 
+## pixelmates 1.0.1
+
+- **Node 22 or newer.** Node 20 reached end of life and the server's dependencies now ask for 22.
+- **Releases wait for a maintainer.** The release workflow stages each version on npm; it goes live after a maintainer approves it with 2FA.
+- **Background sessions stay.** A session running the versioned Claude binary is no longer marked dead and removed.
+- **No upstream Discord.** The intro and the changelog link this repo's issues.
+
 ## pixelmates 1.0.0
 
 pixelmates is a fork of [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). It adds:

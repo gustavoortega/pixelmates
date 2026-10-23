@@ -17,7 +17,7 @@ Open the URL it prints (installed with `npm i -g @pixelmates/cli`, the command i
 
 If you say yes at the consent prompt, it also adds a hook entry to `~/.claude/settings.json`, backed up once to `settings.json.pixelmates.backup`. Undo it with "Instant Detection (Hooks)" in Settings.
 
-Needs Node.js 20+.
+Needs Node.js 22+.
 
 ## Coming from Pixel Agents
 
