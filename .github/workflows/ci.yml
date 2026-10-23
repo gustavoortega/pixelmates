@@ -230,8 +230,8 @@ jobs:
           done
           exit "$failed"
 
-  npm-package-node20:
-    name: npm Package Smoke (Node 20)
+  npm-package-node22:
+    name: npm Package Smoke (Node 22)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -240,10 +240,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v7
         with:
-          node-version: '20.x'
+          node-version: '22.x'
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -298,23 +298,23 @@ jobs:
 
   # Single aggregate status check to require in branch protection, instead of
   # pinning every job/shard name (which silently breaks when a shard is renamed
-  # or the job list changes). Green only when ci, npm-package-node20 and e2e succeed.
+  # or the job list changes). Green only when ci, npm-package-node22 and e2e succeed.
   required-checks:
     name: Required Checks
     if: always()
     needs:
       - ci
-      - npm-package-node20
+      - npm-package-node22
       - e2e
     runs-on: ubuntu-latest
     steps:
       - name: Verify all required jobs succeeded
         run: |
           echo "ci=${{ needs.ci.result }}"
-          echo "npm-package-node20=${{ needs.npm-package-node20.result }}"
+          echo "npm-package-node22=${{ needs.npm-package-node22.result }}"
           echo "e2e=${{ needs.e2e.result }}"
           if [ "${{ needs.ci.result }}" != "success" ] \
-            || [ "${{ needs.npm-package-node20.result }}" != "success" ] \
+            || [ "${{ needs.npm-package-node22.result }}" != "success" ] \
             || [ "${{ needs.e2e.result }}" != "success" ]; then
             echo "::error::One or more required jobs did not succeed"
             exit 1
