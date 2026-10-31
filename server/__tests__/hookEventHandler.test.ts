@@ -210,6 +210,31 @@ describe('HookEventHandler', () => {
       expect(agent.question).toBeUndefined();
     });
 
+    it("a question tool's own PermissionRequest raises no permission and keeps the question", () => {
+      ask();
+      hook('PermissionRequest', { tool_name: 'AskUserQuestion', tool_input: ASK_INPUT });
+      expect(mockWebview.messages.some((m) => m.type === 'agentToolPermission')).toBe(false);
+      expect(lastStatus()).toMatchObject({
+        awaitingReason: 'question',
+        question: 'Which database should the migration target?',
+      });
+      expect(agent.permissionSent).toBeFalsy();
+    });
+
+    it("a permission_prompt Notification while a question waits is the question's", () => {
+      ask();
+      hook('Notification', { notification_type: 'permission_prompt' });
+      expect(mockWebview.messages.some((m) => m.type === 'agentToolPermission')).toBe(false);
+    });
+
+    it('a PermissionRequest for another tool is a real prompt even while a question waits', () => {
+      ask();
+      hook('PermissionRequest', { tool_name: 'Bash' });
+      expect(mockWebview.messages.find((m) => m.type === 'agentToolPermission')).toMatchObject({
+        id: 1,
+      });
+    });
+
     it('the idle prompt that fires while a question is unanswered leaves the question alone', () => {
       ask();
       vi.advanceTimersByTime(60_000);

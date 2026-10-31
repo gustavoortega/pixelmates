@@ -319,7 +319,15 @@ function normalizeSessionEvent(
       };
 
     case 'PermissionRequest':
-      return { sessionId, event: { kind: 'permissionRequest' } };
+      return {
+        sessionId,
+        event: {
+          kind: 'permissionRequest',
+          ...(typeof raw.tool_name === 'string' && raw.tool_name
+            ? { toolName: raw.tool_name }
+            : {}),
+        },
+      };
 
     case 'Notification': {
       const notificationType =

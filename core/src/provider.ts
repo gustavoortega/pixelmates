@@ -125,7 +125,7 @@ export type AgentEvent =
       reason: 'idle' | 'completed';
     }
   | { kind: 'progress'; toolId: string; data: unknown }
-  | { kind: 'permissionRequest' }
+  | { kind: 'permissionRequest'; toolName?: string }
   | {
       kind: 'sessionStart';
       source?: string;
