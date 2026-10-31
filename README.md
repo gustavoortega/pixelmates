@@ -1,4 +1,5 @@
 # pixelmates
+
 Your Claude Code sessions as a pixel office. The crew keeps its names and levels between restarts, and a lit desk means a session is waiting on you.
 
 ```
@@ -17,7 +18,7 @@ Open the URL it prints (installed with `npm i -g @pixelmates/cli`, the command i
 
 If you say yes at the consent prompt, it also adds a hook entry to `~/.claude/settings.json`, backed up once to `settings.json.pixelmates.backup`. Undo it with "Instant Detection (Hooks)" in Settings.
 
-Needs Node.js 22+.
+Needs Node.js 22+. Step by step with screenshots: [docs/install.md](docs/install.md).
 
 ## Coming from Pixel Agents
 
