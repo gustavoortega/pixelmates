@@ -33,7 +33,7 @@ describe('FileStateAdapter', () => {
   it('returns defaults when config file does not exist', () => {
     const adapter = new FileStateAdapter({ namespace: 'standalone' });
     expect(adapter.getSetting('pixel-agents.soundEnabled', false)).toBe(true);
-    expect(adapter.getSetting('pixel-agents.watchAllSessions', true)).toBe(false);
+    expect(adapter.getSetting('pixel-agents.watchAllSessions', false)).toBe(true);
     expect(adapter.getSetting('pixel-agents.lastSeenVersion', 'x')).toBe('');
   });
 
@@ -43,13 +43,13 @@ describe('FileStateAdapter', () => {
     adapter.setSetting('pixel-agents.soundEnabled', false);
     adapter.setSetting('pixel-agents.lastSeenVersion', '1.3');
     adapter.setSetting('pixel-agents.alwaysShowLabels', true);
-    adapter.setSetting('pixel-agents.watchAllSessions', true);
+    adapter.setSetting('pixel-agents.watchAllSessions', false);
     adapter.setSetting('pixel-agents.hooksInfoShown', true);
 
     expect(adapter.getSetting('pixel-agents.soundEnabled', true)).toBe(false);
     expect(adapter.getSetting('pixel-agents.lastSeenVersion', '')).toBe('1.3');
     expect(adapter.getSetting('pixel-agents.alwaysShowLabels', false)).toBe(true);
-    expect(adapter.getSetting('pixel-agents.watchAllSessions', false)).toBe(true);
+    expect(adapter.getSetting('pixel-agents.watchAllSessions', true)).toBe(false);
     expect(adapter.getSetting('pixel-agents.hooksInfoShown', false)).toBe(true);
 
     // hooksEnabled is deliberately NOT an adapter key any more: it is

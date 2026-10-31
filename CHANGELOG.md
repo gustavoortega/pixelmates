@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **The CLI shows every session.** A new `npx @pixelmates/cli` install starts with Watch All Sessions on, so sessions in other folders show up. An existing config keeps its choice; VS Code stays scoped to its workspace.
+
 ## pixelmates 1.0.2
 
 - **Release fix.** The release script reads npm 12's `npm view --json` output, which wraps a single value in an array; 1.0.1 never reached npm because of it. 1.0.2 carries the 1.0.1 changes.
