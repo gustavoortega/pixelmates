@@ -325,3 +325,29 @@ describe('depends on whom', () => {
     expect(inspectorView(input()).tree).toEqual([]);
   });
 });
+
+describe('inspectorView hero.question', () => {
+  const QUESTION = 'Which database should the migration target?';
+  const chip = (i: InspectorInput) =>
+    inspectorView(i)
+      .hero.chip.parts.map((p) => p.text)
+      .join('');
+
+  it('carries the pending question in full, masked, with the chip still saying so', () => {
+    const v = inspectorView(
+      input({ bubbleType: 'waiting', waitingAwaitingInput: true, question: QUESTION }),
+    );
+    expect(v.hero.question).toEqual({ text: QUESTION, pv: true });
+    expect(
+      chip(input({ bubbleType: 'waiting', waitingAwaitingInput: true, question: QUESTION })),
+    ).toBe('has a question');
+  });
+
+  it('keeps the question after the bubble faded, and shows none for an idle wait', () => {
+    const faded = input({ bubbleType: null, question: QUESTION });
+    expect(inspectorView(faded).hero.question).toEqual({ text: QUESTION, pv: true });
+    expect(chip(faded)).toBe('has a question');
+    const idle = input({ bubbleType: 'waiting', waitingAwaitingInput: true });
+    expect(inspectorView(idle).hero.question).toBeUndefined();
+  });
+});

@@ -320,6 +320,13 @@
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
+.insp-question {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .insp-meta {
   display: flex;
   flex-wrap: wrap;

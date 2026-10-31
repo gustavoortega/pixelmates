@@ -134,6 +134,8 @@ export interface InspectorView {
     lead: boolean;
     chip: Chip;
     title?: Text;
+    /** The pending question in full; session text, so masked in privacy mode. */
+    question?: Text;
     meta: Array<{ kind: 'folder' | 'branch' | 'id'; text: Text }>;
     tags: Array<{ kind: 'mode' | 'shells'; text: string }>;
   };
@@ -173,6 +175,8 @@ export interface AgentStateInput {
   isActive: boolean;
   bubbleType: 'permission' | 'waiting' | null;
   waitingAwaitingInput?: boolean;
+  /** The wire text of a pending question; outlives the bubble, which fades after 2 s. */
+  question?: string;
   tools: readonly ToolActivity[];
   health?: AgentHealthView;
   loop?: AgentLoopView;
@@ -324,7 +328,7 @@ export function stateChip(a: AgentStateInput, now: number): Chip {
         : [{ text: 'needs approval' }],
     };
   }
-  if (a.bubbleType === 'waiting' && a.waitingAwaitingInput) {
+  if ((a.bubbleType === 'waiting' && a.waitingAwaitingInput) || a.question !== undefined) {
     return { tone: 'gold', mark: '?', parts: [{ text: 'has a question' }] };
   }
   if (a.health) {
@@ -611,6 +615,7 @@ export function inspectorView(i: InspectorInput): InspectorView {
       lead: Boolean(i.isTeamLead) || runs.length > 0 || i.mates.length > 0,
       chip: stateChip(i, i.now),
       title: i.title ? { text: i.title, pv: true } : undefined,
+      question: i.question ? { text: i.question, pv: true } : undefined,
       meta,
       tags,
     },

@@ -37,16 +37,16 @@ describe('questionText', () => {
     expect(text).not.toMatch(/ {2}/);
   });
 
-  it('cuts a long question to 80 code points, counting the "(+N)" suffix and the ellipsis', () => {
-    const long = questionText(ask('x'.repeat(200)))!;
-    expect(Array.from(long)).toHaveLength(80);
+  it('cuts a long question to 300 code points, counting the "(+N)" suffix and the ellipsis', () => {
+    const long = questionText(ask('x'.repeat(700)))!;
+    expect(Array.from(long)).toHaveLength(300);
     expect(long.endsWith('…')).toBe(true);
-    const withMore = questionText(ask('x'.repeat(200), 'second'))!;
-    expect(Array.from(withMore)).toHaveLength(80);
+    const withMore = questionText(ask('x'.repeat(700), 'second'))!;
+    expect(Array.from(withMore)).toHaveLength(300);
     expect(withMore.endsWith('… (+1)')).toBe(true);
     // Astral characters are one code point each, so a cut never splits a surrogate pair.
-    const emoji = questionText(ask('\u{1F600}'.repeat(200)))!;
-    expect(Array.from(emoji)).toHaveLength(80);
+    const emoji = questionText(ask('\u{1F600}'.repeat(700)))!;
+    expect(Array.from(emoji)).toHaveLength(300);
     expect(emoji).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
   });
 });

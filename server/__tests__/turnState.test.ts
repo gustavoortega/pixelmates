@@ -255,11 +255,11 @@ describe('deriveTurnState', () => {
 
     it('redacts and cuts the text like the hook path does', () => {
       const token = 'ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8';
-      const state = stateOf([prompt(), asking(`Use ${token}\u202e ${'y'.repeat(200)}`)]);
+      const state = stateOf([prompt(), asking(`Use ${token}\u202e ${'y'.repeat(700)}`)]);
       const text = (state as { question: string }).question;
       expect(text).not.toContain('ghp_');
       expect(text).not.toContain('\u202e');
-      expect(Array.from(text).length).toBeLessThanOrEqual(80);
+      expect(Array.from(text).length).toBe(300);
     });
 
     it('is still awaiting input, without text, when the question cannot be read', () => {

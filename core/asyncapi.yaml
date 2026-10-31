@@ -332,10 +332,10 @@ components:
             which a client reads as "question".
         question:
           type: string
-          maxLength: 160
+          maxLength: 600
           description: >-
             Sent only with awaitingReason "question". The first question the
-            agent asked, flattened, redacted and cut to 80 code points by the
+            agent asked, flattened, redacted and cut to 300 code points by the
             server. Session text: a client masks it in privacy mode. Absent
             when the server could not read one.
         since:

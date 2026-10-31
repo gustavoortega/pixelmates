@@ -285,12 +285,12 @@ describe('HookEventHandler', () => {
       const token = 'ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8';
       hook('PreToolUse', {
         tool_name: 'AskUserQuestion',
-        tool_input: { questions: [{ question: `Use ${token}‮ now? ${'y'.repeat(200)}` }] },
+        tool_input: { questions: [{ question: `Use ${token}‮ now? ${'y'.repeat(700)}` }] },
       });
       const text = lastStatus()!.question as string;
       expect(text).not.toContain('ghp_');
       expect(text).not.toMatch(/[‮\n]/);
-      expect(Array.from(text).length).toBeLessThanOrEqual(80);
+      expect(Array.from(text).length).toBe(300);
     });
   });
 
