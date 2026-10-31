@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **A question reads as a question.** When a session asks you something, the rail shows the question instead of "Allow AskUserQuestion?".
+
 ## pixelmates 1.0.3
 
 - **The CLI shows every session.** A new `npx @pixelmates/cli` install starts with Watch All Sessions on, so sessions in other folders show up. An existing config keeps its choice; VS Code stays scoped to its workspace.

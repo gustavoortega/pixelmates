@@ -401,7 +401,7 @@ export class HookEventHandler {
       case 'permissionRequest':
         // Handles BOTH the PermissionRequest hook AND the Notification(permission_prompt)
         // hook -- normalizeHookEvent collapses them into one event kind.
-        return this.handlePermissionRequest(agent, agentId);
+        return this.handlePermissionRequest(agent, agentId, normEvent.toolName);
       case 'turnEnd':
         // Handles Stop AND Notification(idle_prompt) -- both normalize to turnEnd.
         // `idle` discriminates them: idle_prompt is the quiet "finished, waiting for you".
@@ -794,7 +794,12 @@ export class HookEventHandler {
   }
 
   /** Handle PermissionRequest: cancel heuristic timer, show permission bubble on agent + sub-agents. */
-  private handlePermissionRequest(agent: AgentState, agentId: number): void {
+  private handlePermissionRequest(agent: AgentState, agentId: number, toolName?: string): void {
+    // A question tool's own dialog is not a permission prompt: its PreToolUse already raised the
+    // question ticket. A prompt naming another tool is a real one, even while a question waits.
+    const asks = this.provider.turnTraits?.userQuestionTools;
+    if (toolName !== undefined ? asks?.has(toolName) === true : hasPendingQuestion(agent)) return;
+
     // When lead has inline teammates, route permission to the teammates instead.
     // The hook fires on the lead's session_id but the permission is for a teammate.
     const inlineTeammates = getInlineTeammates(agentId, this.agents);
