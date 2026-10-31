@@ -87,7 +87,7 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     transcriptParser.ts              JSONL parsing for heuristic / file-fallback mode
     timerManager.ts                  Waiting / permission timers
     sessionMeta.ts                   The monitor's `agentSession` (start, branch, short id, cost): per-record fold, head/tail seed, `costFromRecord` (the one cost extractor), scan-adopted folder from the transcript's cwd
-    awaitingQuestion.ts              questionText (the one producer of the question text: sanitized, redacted, 80 code points) and the awaiting-state helpers; the text lives in memory only, never logged or persisted
+    awaitingQuestion.ts              questionText (the one producer of the question text: sanitized, redacted, 300 code points) and the awaiting-state helpers; the text lives in memory only, never logged or persisted
     statusSince.ts                   When each status and pending permission prompt began (the monitor's `since`): stamped on a change, never on a repeat
     assetLoader.ts                   PNG → SpriteData via pngjs
     teamUtils.ts                     isInlineTeammateOf, getInlineTeammates, hasInlineTeammates
@@ -128,7 +128,7 @@ webview-ui/                          React 19 + Canvas UI (depends only on core/
       MonitorShell.tsx               The window's row [rail][stage][sheet]; the one reader of the monitor version (MonitorRail/MonitorSheet are its slots)
       monitorLayout.ts               Pure: rail width, inline or overlay sheet, full plates, per window size
       MonitorSheet.tsx               The inspector sheet's slot: open while officeState.monitorSheetOpen and an agent is selected (a sub-agent shows its lead), inline from 1600 px, z 45 overlay below (420 px, 380 up to 1440 wide); a deselection closes it, opening it closes Usage; opening and closing report to the App's AutoFit (`setSheet`), which re-fits
-      inspector/                     The sheet: inspectorView.ts (pure rows, absent never 0, user text marked pv), sheetInput.ts (OfficeState + App tool rows -> input), sheetControl.ts (openSheet/closeSheet over the keys' setSheetOpen: one switch), InspectorSheet.tsx (reads the rail's Face), PixelArt.tsx + pixelBitmaps.ts (tier gem, icons and the context ring on the medal's grid as crisp SVG rects: the font lacks ✓ ▪ ⌛), inspector.css. A helper row's minutes run from `SubagentCharacter.startedAt`, stamped only for a spawn seen live (after the page's first handshakeDone, outside a resync): the wire carries no helper start
+      inspector/                     The sheet: inspectorView.ts (pure rows, absent never 0, user text marked pv), sheetInput.ts (OfficeState + App tool rows -> input), sheetControl.ts (openSheet/closeSheet over the keys' setSheetOpen: one switch), InspectorSheet.tsx (reads the rail's Face; shows a pending question in full (pv) under the hero), PixelArt.tsx + pixelBitmaps.ts (tier gem, icons and the context ring on the medal's grid as crisp SVG rects: the font lacks ✓ ▪ ⌛), inspector.css. A helper row's minutes run from `SubagentCharacter.startedAt`, stamped only for a spawn seen live (after the page's first handshakeDone, outside a resync): the wire carries no helper start
     hooks/
       useExtensionMessages.ts        Message handler — translates ServerMessage into OfficeState mutations
       useNow.ts                      Epoch ms on an interval (the Usage panel's countdowns)
