@@ -40,6 +40,7 @@ function stateOf(os: OfficeState, ch: Character, tools: SheetToolState): AgentSt
     isActive: ch.isActive,
     bubbleType: ch.bubbleType,
     waitingAwaitingInput: ch.waitingAwaitingInput,
+    question: os.questions.get(ch.id),
     tools: tools.agentTools[ch.id] ?? NO_TOOLS,
     health: os.health.get(ch.id),
     loop: os.loops.get(ch.id),

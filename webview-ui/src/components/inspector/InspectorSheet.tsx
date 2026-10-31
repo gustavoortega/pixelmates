@@ -82,6 +82,11 @@ function Hero({ hero, portrait }: { hero: InspectorView['hero']; portrait: React
           <T t={hero.title} />
         </p>
       )}
+      {hero.question && (
+        <p className="insp-question" data-testid="inspector-question">
+          <T t={hero.question} />
+        </p>
+      )}
       {hero.meta.length > 0 && (
         <div className="insp-meta">
           {hero.meta.map((m) => (

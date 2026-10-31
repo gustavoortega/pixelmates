@@ -4,7 +4,7 @@ import type { AgentState } from './types.js';
 import { sanitizeWorkflowText } from './workflowRuns.js';
 
 /**
- * The question a waiting agent asked, as the rail's ticket may show it.
+ * The question a waiting agent asked, as the clients show it.
  *
  * This is the one session text allowed onto the wire, so `questionText` is the only function
  * that produces it and every path (the PreToolUse hook, the live transcript, the adoption-time
@@ -12,10 +12,10 @@ import { sanitizeWorkflowText } from './workflowRuns.js';
  * persisted structure receives it.
  */
 
-/** Code points the ticket shows, ellipsis included. */
-export const QUESTION_MAX_CODE_POINTS = 80;
+/** Code points of the question the clients show, ellipsis included. */
+export const QUESTION_MAX_CODE_POINTS = 300;
 /** Room for the redaction rules to see a whole token before the final cut. */
-const QUESTION_RAW_MAX = 400;
+const QUESTION_RAW_MAX = 1200;
 const ELLIPSIS = '…';
 
 /**
