@@ -2,7 +2,7 @@
   "name": "@pixelmates/cli",
   "displayName": "pixelmates",
   "description": "Your Claude Code sessions as a pixel office that tells you who needs you.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "gustavoortega",
   "author": {
     "name": "Gustavo Ortega"
