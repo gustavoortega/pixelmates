@@ -26,7 +26,7 @@ Your office is copied from `~/.pixel-agents` on first run; nothing there is chan
 
 ## Who needs you
 
-<img src="docs/images/needs-you.png" alt="The rail: Ada waits 12 minutes on Allow git push, Alan asks date-fns or Day.js for the picker, Grace is stuck on failing tests; their desks are lit in the office" width="880">
+<img src="docs/images/needs-you.png" alt="The rail: Ada waits 12 minutes on Allow git push, Alan asks whether the date picker should start the week on Monday or Sunday, Grace is stuck on failing tests; their desks are lit in the office" width="880">
 
 The rail lists the sessions waiting on you and lights their desks. A permission prompt names its command; a question shows its own words. A session that is stuck, looping or stalled is named too.
 
@@ -48,7 +48,7 @@ Turns, tool calls and sub-agents pay nothing. `roster.json` holds counts only.
 
 ## Every session on one screen
 
-<img src="docs/images/inspector-question.png" alt="Alan selected: the inspector shows his whole question, date-fns or Day.js for the picker, with the reasons, then context, model, session time and cost" width="880">
+<img src="docs/images/inspector-question.png" alt="Alan selected: the inspector shows his whole question, Monday or Sunday for the date picker, and why it matters, then context, model, session time and cost" width="880">
 
 Enter opens the inspector: the whole question the rail cuts to two lines, then context, model, branch, cost, helpers and workflow phases. Tripwires are alerts, they block nothing.
 
