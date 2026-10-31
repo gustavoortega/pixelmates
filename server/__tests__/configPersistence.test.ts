@@ -312,6 +312,24 @@ describe('configPersistence: areas', () => {
       expect(readConfig().vscode.cozyLighting).toBe(true);
     });
 
+    it('watchAllSessions is on by default for standalone only, and an explicit off survives', () => {
+      expect(readConfig().standalone.watchAllSessions).toBe(true);
+      expect(readConfig().vscode.watchAllSessions).toBe(false);
+
+      // A file written before the key existed takes the namespace default.
+      const configDir = path.join(tempHome, '.pixelmates');
+      fs.mkdirSync(configDir, { recursive: true });
+      const configFile = path.join(configDir, 'config.json');
+      fs.writeFileSync(configFile, JSON.stringify({ standalone: {}, vscode: {} }), 'utf-8');
+      expect(readConfig().standalone.watchAllSessions).toBe(true);
+      expect(readConfig().vscode.watchAllSessions).toBe(false);
+
+      const cfg = readConfig();
+      cfg.standalone.watchAllSessions = false;
+      writeConfig(cfg);
+      expect(readConfig().standalone.watchAllSessions).toBe(false);
+    });
+
     it('keeps namespaces isolated when only one writes mappings', () => {
       const cfg = readConfig();
       cfg.vscode.areaMappings = { frontend: ['Engineering'] };
