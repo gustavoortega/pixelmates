@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## pixelmates 1.0.4
 
 - **A question reads as a question.** When a session asks you something, the rail shows the question instead of "Allow AskUserQuestion?".
 - **The whole question in the inspector.** Enter on a session that asks you something shows the full question; the rail ticket stays two lines.
