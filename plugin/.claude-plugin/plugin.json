@@ -1,6 +1,6 @@
 {
   "name": "pixelmates",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Memory for Claude Code: ask what your past sessions on this machine asked, concluded, committed and edited.",
   "author": {
     "name": "gustavoortega"
