@@ -79,6 +79,7 @@ import { darkScreenSprite, monitorLook, monitorTick } from '../monitor.js';
 import { spriteHeadTopY } from '../nameplate.js';
 import { seatedDrawOffsetPx } from '../seatDraw.js';
 import { brightestShaftCell, shaftsAt, shaftsOff } from '../shafts.js';
+import { type SideBubbleKind, sideBubbleKind } from '../sideBubble.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import {
@@ -1480,13 +1481,44 @@ export class OfficeState {
     return out;
   }
 
-  /** Seats that own a PC and that nobody holds, as one string: a change means a rebuild. */
+  /** Seats that own a PC and that nobody holds, plus the screen glyphs showing, as one string: a
+   *  change means a rebuild, so a glyph appears within a tick of the status that raised it. */
   private unusedSeatKey(): string {
     let key = '';
     for (const uid of this.pcBySeat.keys()) {
       if (!this.seats.get(uid)?.assigned) key += `${uid};`;
     }
+    for (const [pc, kind] of this.screenGlyphs()) key += `${pc}=${kind};`;
     return key;
+  }
+
+  /** The agent's loop has a wake in the future: it is asleep, not waiting for the user. */
+  private loopSleeping(id: number): boolean {
+    const nextAt = this.loops.get(id)?.nextAt;
+    return nextAt !== undefined && nextAt > officeNow().getTime();
+  }
+
+  /** The side bubble beside this head, or null (the rule is sideBubble.ts; the loop is read here). */
+  sideBubbleOf(ch: Character): SideBubbleKind | null {
+    return sideBubbleKind(ch, this.awaitingReasons.get(ch.id), this.loopSleeping(ch.id));
+  }
+
+  /**
+   * The glyph each PC's screen shows: the side bubble's kind for an agent standing on its own seat
+   * (the pc the seat owns). A walker, an active agent and a sleeping loop give none.
+   */
+  screenGlyphs(): Map<string, SideBubbleKind> {
+    const out = new Map<string, SideBubbleKind>();
+    for (const ch of this.characters.values()) {
+      if (!ch.seatId) continue;
+      const kind = this.sideBubbleOf(ch);
+      if (!kind) continue;
+      const seat = this.seats.get(ch.seatId);
+      if (!seat || seat.seatCol !== ch.tileCol || seat.seatRow !== ch.tileRow) continue;
+      const pc = this.pcBySeat.get(ch.seatId);
+      if (pc) out.set(pc, kind);
+    }
+    return out;
   }
 
   /**
@@ -1497,6 +1529,11 @@ export class OfficeState {
   private unusedSeatLooks(): Map<string, FurnitureLook> {
     const looks = new Map<string, FurnitureLook>();
     const byUid = new Map(this.layout.furniture.map((f) => [f.uid, f]));
+    // Only a PC with a front screen has a glass to fill (the ON-frame test the dark screen uses).
+    for (const [pcUid, kind] of this.screenGlyphs()) {
+      const pc = byUid.get(pcUid);
+      if (pc && getOnStateType(pc.type) !== pc.type) looks.set(pcUid, { screenGlyph: kind });
+    }
     for (const [seatUid, pcUid] of this.pcBySeat) {
       if (this.seats.get(seatUid)?.assigned) continue;
       const pc = byUid.get(pcUid);

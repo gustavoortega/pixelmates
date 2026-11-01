@@ -5,9 +5,13 @@ import { HELPER_LOOK, PALETTE_COUNT } from '../../constants.js';
 import { getHueLockedSprite } from '../colorize.js';
 import type { Direction, SpriteData } from '../types.js';
 import { Direction as Dir } from '../types.js';
+import bubbleAskData from './bubble-ask.json';
+import bubbleDoneData from './bubble-done.json';
 import bubblePermissionData from './bubble-permission.json';
 import bubblePetData from './bubble-pet.json';
 import bubbleWaitingData from './bubble-waiting.json';
+import screenAskData from './screen-ask.json';
+import screenDoneData from './screen-done.json';
 
 // ── Speech Bubble Sprites ───────────────────────────────────────
 
@@ -31,6 +35,15 @@ export const BUBBLE_WAITING_SPRITE: SpriteData = resolveBubbleSprite(bubbleWaiti
 
 /** Heart bubble: pet petting feedback (11x13 world px) */
 export const BUBBLE_HEART_SPRITE: SpriteData = resolveBubbleSprite(bubblePetData);
+
+/** Side bubbles beside a head: gold "?" for a question, sage check for a finished turn (14x14
+ *  world px, 2x art, tail on the left at mid height). */
+export const BUBBLE_ASK_SPRITE: SpriteData = resolveBubbleSprite(bubbleAskData);
+export const BUBBLE_DONE_SPRITE: SpriteData = resolveBubbleSprite(bubbleDoneData);
+
+/** The same two glyphs filling a monitor screen (8x6 world px = MONITOR_SCREEN_RECT). */
+export const SCREEN_ASK_SPRITE: SpriteData = resolveBubbleSprite(screenAskData);
+export const SCREEN_DONE_SPRITE: SpriteData = resolveBubbleSprite(screenDoneData);
 
 // ════════════════════════════════════════════════════════════════
 // Loaded character sprites (from PNG assets)

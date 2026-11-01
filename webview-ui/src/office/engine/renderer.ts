@@ -75,6 +75,8 @@ import {
   SHAFT_BLEND_MODE,
   SHAFT_EDGE_COLOR,
   shaftCss,
+  SIDE_BUBBLE_CENTER_DY,
+  SIDE_BUBBLE_DX,
   TRIPWIRE_BEACON_RADIUS_PX,
   TRIPWIRE_FLASH_PERIOD_MS,
   VOID_TILE_DASH_PATTERN,
@@ -121,6 +123,7 @@ import { mapOffset, worldToDevice } from '../projection.js';
 import { seatedBubbleOffsetPx, seatedDrawOffsetPx } from '../seatDraw.js';
 import { characterLayerZ, shadowSprite } from '../shadow.js';
 import type { Shaft } from '../shafts.js';
+import { askBobOffset, type SideBubbleKind } from '../sideBubble.js';
 import {
   getCarpetJunctionSprite,
   getCarpetPaletteKey,
@@ -136,10 +139,14 @@ import {
   getTintedOutlineSprite,
 } from '../sprites/spriteCache.js';
 import {
+  BUBBLE_ASK_SPRITE,
+  BUBBLE_DONE_SPRITE,
   BUBBLE_HEART_SPRITE,
   BUBBLE_PERMISSION_SPRITE,
   BUBBLE_WAITING_SPRITE,
   getCharacterSprites,
+  SCREEN_ASK_SPRITE,
+  SCREEN_DONE_SPRITE,
 } from '../sprites/spriteData.js';
 import { drawsBubble, statusGlyph, tripwireColor, type TripwireSeverity } from '../toolUtils.js';
 import type {
@@ -548,6 +555,7 @@ export function renderScene(
     const fx = offsetX + f.x * zoom;
     const fy = offsetY + f.y * zoom;
     if (f.mirrored) {
+      // No screen glyph here, like the CRT overlay: the mirrored screen is not the front one.
       drawables.push({
         zY: f.zY,
         draw: (c) => {
@@ -564,6 +572,15 @@ export function renderScene(
         zY: f.zY,
         draw: (c) => {
           c.drawImage(cached, fx, fy);
+          if (f.screenGlyph) {
+            // A question or a finished turn fills the screen over the PC art.
+            const glyph = f.screenGlyph === 'ask' ? SCREEN_ASK_SPRITE : SCREEN_DONE_SPRITE;
+            c.drawImage(
+              getCachedSprite(glyph, zoom),
+              fx + MONITOR_SCREEN_RECT.x * zoom,
+              fy + MONITOR_SCREEN_RECT.y * zoom,
+            );
+          }
           if (onScreen) {
             // An active CRT: glow, the occasional dim and scanlines, over the screen pixels only.
             const { dim } = monitorLook(true, monitorTick(look?.nowMs ?? 0), f.x * 31 + f.y);
@@ -1405,6 +1422,38 @@ function renderCrewLines(
 export interface HeadRules {
   bubbleShown(ch: Character): boolean;
   alertOnTag(ch: Character): boolean;
+  /** The side bubble beside the head (a question or a finished turn), or null. */
+  sideBubbleOf(ch: Character): SideBubbleKind | null;
+}
+
+/**
+ * The gold "?" / sage check to the right of a head. It sits beside the head stack, never in it,
+ * so it ignores bubbleShown, the head slot and the idle glyph; the tail points at the head.
+ * Only the question bobs, in 1 world px steps.
+ */
+function renderSideBubbles(
+  ctx: CanvasRenderingContext2D,
+  characters: Character[],
+  offsetX: number,
+  offsetY: number,
+  zoom: number,
+  nowMs: number,
+  heads: HeadRules,
+): void {
+  for (const ch of characters) {
+    const kind = heads.sideBubbleOf(ch);
+    if (!kind) continue;
+    const sprite = kind === 'ask' ? BUBBLE_ASK_SPRITE : BUBBLE_DONE_SPRITE;
+    const cached = getCachedSprite(sprite, zoom);
+    // Same head-top formula as renderBubbles, without the stack lift.
+    const headY = Math.round(
+      offsetY + (ch.y + seatedBubbleOffsetPx(ch) - BUBBLE_VERTICAL_OFFSET_PX) * zoom,
+    );
+    const bob = kind === 'ask' ? askBobOffset(nowMs) * zoom : 0;
+    const x = Math.round(offsetX + (ch.x + SIDE_BUBBLE_DX) * zoom);
+    const y = Math.round(headY + SIDE_BUBBLE_CENTER_DY * zoom - cached.height / 2 - bob);
+    ctx.drawImage(cached, x, y);
+  }
 }
 
 function renderBubbles(
@@ -1826,6 +1875,7 @@ export function renderFrame(
     health,
     heads,
   );
+  if (heads) renderSideBubbles(ctx, characters, offsetX, offsetY, zoom, look?.nowMs ?? 0, heads);
   // XP pops, level-ups and mood weather ride above the bubbles
   if (fx) renderFx(ctx, fx, characters, offsetX, offsetY, zoom);
   // Pet heart bubbles (same overlay pass)
