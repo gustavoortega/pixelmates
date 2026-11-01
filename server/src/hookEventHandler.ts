@@ -7,6 +7,7 @@ import {
   hasPendingQuestion,
   questionText,
   setAwaitingQuestion,
+  trailingQuestion,
 } from './awaitingQuestion.js';
 import { SESSION_END_GRACE_MS } from './constants.js';
 import {
@@ -21,7 +22,12 @@ import { broadcastRoster } from './rosterAgent.js';
 import type { SessionRouter } from './sessionRouter.js';
 import { resetSessionSignals } from './sessionSignals.js';
 import { notePermissionPending, statusBroadcast } from './statusSince.js';
-import { getInlineTeammates, hasInlineTeammates, hasPromotedBackgroundAgent } from './teamUtils.js';
+import {
+  getInlineTeammates,
+  hasInlineTeammates,
+  hasPromotedBackgroundAgent,
+  isTeammate,
+} from './teamUtils.js';
 import { cancelPermissionTimer, cancelWaitingTimer } from './timerManager.js';
 import { notifyBackgroundAgentCompleted } from './transcriptParser.js';
 import { DEFAULT_TRIPWIRE_RULES } from './tripwireDefaults.js';
@@ -31,6 +37,10 @@ import { isKnownWorkflowAgent, isWorkflowTranscriptPath } from './workflowRuns.j
 import { applyXpEvent } from './xp.js';
 
 const debug = process.env.PIXELMATES_DEBUG !== '0';
+
+/** Why an agent went waiting: 'done' (nothing asked), 'idle' (finished its turn, your move), or
+ *  a question the final message ended on (text absent when redaction left nothing to show). */
+type EndWait = 'done' | 'idle' | { question: string | undefined };
 
 /** Normalized hook event received from any provider's hook script via the HTTP server. */
 export interface HookEvent {
@@ -407,7 +417,7 @@ export class HookEventHandler {
         // `idle` discriminates them: idle_prompt is the quiet "finished, waiting for you".
         return normEvent.idle === true
           ? this.handleIdlePrompt(agent, agentId)
-          : this.handleStop(agent, agentId);
+          : this.handleStop(agent, agentId, normEvent.finalText);
       case 'subagentTurnEnd':
         // Handles TeammateIdle AND TaskCompleted -- both normalize here. The normalized
         // `reason` field discriminates; the team-provider's extractTeammateNameFromEvent(raw)
@@ -836,9 +846,18 @@ export class HookEventHandler {
     }
   }
 
-  /** Handle Stop: Claude finished responding, mark agent as waiting. */
-  private handleStop(agent: AgentState, agentId: number): void {
-    this.markAgentWaiting(agent, agentId);
+  /**
+   * Handle Stop: the turn ended. The final message decides the wait: a question to the user is
+   * a question wait, anything else (or no text, an older Claude Code) is the quiet "your turn".
+   * A teammate's turn end is its lead's business, so it stays Done.
+   */
+  private handleStop(agent: AgentState, agentId: number, finalText: string | undefined): void {
+    if (isTeammate(agent)) {
+      this.markAgentWaiting(agent, agentId);
+      return;
+    }
+    const asked = finalText ? trailingQuestion(finalText) : undefined;
+    this.markAgentWaiting(agent, agentId, asked ? { question: asked.text } : 'idle');
   }
 
   /**
@@ -848,7 +867,7 @@ export class HookEventHandler {
    */
   private handleIdlePrompt(agent: AgentState, agentId: number): void {
     if (hasPendingQuestion(agent)) return;
-    this.markAgentWaiting(agent, agentId, true);
+    this.markAgentWaiting(agent, agentId, isTeammate(agent) ? 'done' : 'idle');
   }
 
   /**
@@ -928,7 +947,7 @@ export class HookEventHandler {
    * agents), cancels timers, and notifies the webview. Same logic as the turn_duration
    * handler in transcriptParser.ts.
    */
-  private markAgentWaiting(agent: AgentState, agentId: number, idle = false): void {
+  private markAgentWaiting(agent: AgentState, agentId: number, wait: EndWait = 'done'): void {
     cancelWaitingTimer(agentId, this.waitingTimers);
     cancelPermissionTimer(agentId, this.permissionTimers);
 
@@ -977,16 +996,18 @@ export class HookEventHandler {
 
     agent.isWaiting = true;
     clearAwaiting(agent);
-    if (idle) {
+    if (wait === 'idle') {
       agent.awaitingInput = true;
       agent.awaitingReason = 'idle';
+    } else if (wait !== 'done') {
+      setAwaitingQuestion(agent, wait.question);
     }
     agent.permissionSent = false;
     agent.hadToolsInTurn = false;
     agent.currentHookToolId = undefined;
     // Every hook path into waiting ends the turn: Stop, idle prompt, a teammate going idle.
     healthOnTurnEnd(agent, this.agents, this.provider.turnTraits);
-    this.agents.broadcast(statusBroadcast(agentId, agent, 'waiting', Date.now(), idle));
+    this.agents.broadcast(statusBroadcast(agentId, agent, 'waiting', Date.now(), wait !== 'done'));
   }
 
   /** Clean up timers and maps. Called when the extension disposes. */

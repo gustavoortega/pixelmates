@@ -164,4 +164,33 @@ describe('the question text stays in memory', () => {
     expect(resent[0]?.question).not.toContain(SECRET);
     sweep();
   });
+
+  it('Stop path: only the cleaned question survives, never the rest of the final message', () => {
+    const FINAL_MARKER = 'MARKER-7f3a';
+    const handler = new HookEventHandler(
+      store,
+      new Map(),
+      new Map(),
+      claudeProvider,
+      new SessionRouter(),
+    );
+    const agent = createAgent({ id: 3, sessionId: 'sess-3' });
+    store.set(3, agent);
+    handler.registerAgent('sess-3', 3);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'Stop',
+      session_id: 'sess-3',
+      last_assistant_message: `${FINAL_MARKER} done.\nShip it now?`,
+    });
+
+    const status = wire.filter((m) => m.type === 'agentStatus' && m.id === 3).at(-1);
+    expect(status?.question).toBe('Ship it now?');
+    expect(JSON.stringify(agent)).not.toContain(FINAL_MARKER);
+    store.persist();
+    for (const haystack of [diskText(), output.join('\n')]) {
+      expect(haystack).not.toContain(FINAL_MARKER);
+    }
+    sweep();
+  });
 });

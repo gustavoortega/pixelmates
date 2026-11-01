@@ -281,7 +281,15 @@ function normalizeSessionEvent(
       };
 
     case 'Stop':
-      return { sessionId, event: { kind: 'turnEnd' } };
+      return {
+        sessionId,
+        event: {
+          kind: 'turnEnd',
+          ...(typeof raw.last_assistant_message === 'string'
+            ? { finalText: raw.last_assistant_message }
+            : {}),
+        },
+      };
 
     case 'UserPromptSubmit':
       // No normalized kind for user prompts yet; silently ignore. No longer

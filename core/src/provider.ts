@@ -99,6 +99,10 @@ export type AgentEvent =
        *  a quiet "finished, waiting for you", never a question: a pending question is its own
        *  signal (a user-question tool start). Absent/false = the agent finished its turn. */
       idle?: boolean;
+      /** The turn's last assistant text (Claude's Stop `last_assistant_message`), so the handler
+       *  can tell a turn that ended on a question from a finished one. Absent = unknown, never
+       *  ''. Read once and dropped: no consumer stores or logs it. */
+      finalText?: string;
     }
   | {
       kind: 'subagentStart';
