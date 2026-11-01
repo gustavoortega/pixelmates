@@ -268,9 +268,80 @@ describe('HookEventHandler', () => {
 
       ask();
       hook('Stop');
-      expect(lastStatus()).toMatchObject({ status: 'waiting', awaitingInput: false });
+      expect(lastStatus()).toMatchObject({
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+      });
       expect(lastStatus()).not.toHaveProperty('question');
-      expect(agent.awaitingReason).toBeUndefined();
+      expect(agent.question).toBeUndefined();
+    });
+
+    // The turn's last words decide the wait.
+    describe('Stop reads the final message', () => {
+      const stop = (last_assistant_message?: unknown) =>
+        hook('Stop', last_assistant_message === undefined ? {} : { last_assistant_message });
+
+      it('a final message ending on a question is a question wait with that sentence', () => {
+        stop('Merged #22. Ship it now?');
+        expect(lastStatus()).toMatchObject({
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'question',
+          question: 'Ship it now?',
+        });
+      });
+
+      it.each([
+        ['a statement', 'Merged #22.'],
+        ['no field', undefined],
+        ['an empty message', ''],
+      ])('%s is the quiet idle wait', (_case, text) => {
+        stop(text);
+        expect(lastStatus()).toMatchObject({ awaitingInput: true, awaitingReason: 'idle' });
+        expect(lastStatus()).not.toHaveProperty('question');
+      });
+
+      it('the idle prompt after a prose question leaves the question', () => {
+        stop('Ship it now?');
+        vi.advanceTimersByTime(60_000);
+        hook('Notification', { notification_type: 'idle_prompt' });
+        expect(lastStatus()).toMatchObject({
+          awaitingReason: 'question',
+          question: 'Ship it now?',
+        });
+      });
+
+      it('a question the redaction fails closed on still raises the ticket, without text', () => {
+        stop('Where is the private key?');
+        expect(lastStatus()).toMatchObject({ awaitingInput: true, awaitingReason: 'question' });
+        expect(lastStatus()).not.toHaveProperty('question');
+        hook('Notification', { notification_type: 'idle_prompt' });
+        expect(agent.awaitingReason).toBe('question');
+      });
+
+      it("an own-session teammate's Stop and idle prompt stay Done, question or not", () => {
+        agent.agentName = 'tm';
+        agent.leadAgentId = 9;
+        stop('Ship it now?');
+        expect(lastStatus()).toMatchObject({ status: 'waiting', awaitingInput: false });
+        expect(agent.awaitingReason).toBeUndefined();
+        hook('Notification', { notification_type: 'idle_prompt' });
+        expect(lastStatus()).toMatchObject({ status: 'waiting', awaitingInput: false });
+        expect(agent.awaitingReason).toBeUndefined();
+      });
+
+      it('a solo session and a team lead both get the question wait', () => {
+        stop('Ship it now?');
+        expect(agent.awaitingReason).toBe('question');
+        agent.agentName = 'lead';
+        agent.isTeamLead = true;
+        stop('Another one?');
+        expect(lastStatus()).toMatchObject({
+          awaitingReason: 'question',
+          question: 'Another one?',
+        });
+      });
     });
 
     it('SessionEnd clears a pending question', () => {
@@ -296,7 +367,7 @@ describe('HookEventHandler', () => {
 
   // ── Stop ────────────────────────────────────────────────────
 
-  it('Stop marks agent waiting without awaitingInput (Done)', () => {
+  it('Stop without a final message marks the agent waiting, idle (your turn)', () => {
     const agent = createTestAgent({ id: 1 });
     agents.set(1, agent);
     handler.registerAgent('sess-1', 1);
@@ -311,8 +382,8 @@ describe('HookEventHandler', () => {
       (m) => m.type === 'agentStatus' && m.status === 'waiting',
     );
     expect(waitMsg).toBeTruthy();
-    // Stop = finished its turn -> awaitingInput falsy ("Done")
-    expect(waitMsg?.awaitingInput).toBeFalsy();
+    // No final message to read: the quiet idle wait, not a question.
+    expect(waitMsg).toMatchObject({ awaitingInput: true, awaitingReason: 'idle' });
   });
 
   it('Stop clears foreground tools but preserves background agents', () => {

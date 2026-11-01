@@ -28,7 +28,7 @@ import {
 } from './sessionSignals.js';
 import { applySessionTitle } from './sessionTitle.js';
 import { stampStatus, statusBroadcast } from './statusSince.js';
-import { hasInlineTeammates, hasPromotedBackgroundAgent } from './teamUtils.js';
+import { hasInlineTeammates, hasPromotedBackgroundAgent, isTeammate } from './teamUtils.js';
 import {
   cancelPermissionTimer,
   cancelWaitingTimer,
@@ -115,6 +115,22 @@ export function setTeamSwitchCallback(
  *  Invariant: a provider is registered before any transcript lines are parsed. */
 export function formatToolStatus(toolName: string, input: Record<string, unknown>): string {
   return hookProvider?.formatToolStatus(toolName, input) ?? `Using ${toolName}`;
+}
+
+/** Record texts the CLI writes around slash commands and interrupts: they carry no prompt, so
+ *  they neither end a wait nor start a turn. */
+const LOCAL_COMMAND_PREFIXES = [
+  '<command-name>',
+  '<command-message>',
+  '<local-command-stdout>',
+  '<local-command-caveat>',
+  '[Request interrupted by user',
+];
+
+function isLocalCommandText(text: unknown): boolean {
+  if (typeof text !== 'string') return false;
+  const head = text.trimStart();
+  return LOCAL_COMMAND_PREFIXES.some((p) => head.startsWith(p));
 }
 
 export function processTranscriptLine(
@@ -352,6 +368,7 @@ export function processTranscriptLine(
           tool_use_id?: string;
           content?: unknown;
           is_error?: unknown;
+          text?: unknown;
         }>;
         const hasToolResult = blocks.some((b) => b.type === 'tool_result');
         if (hasToolResult) {
@@ -545,7 +562,7 @@ export function processTranscriptLine(
           // Last on purpose: the parse swallows any throw, and a bug here must not
           // skip the tool bookkeeping above.
           readToolSignals(agentId, agent, agents, record, blocks, turn?.timestampMs);
-        } else {
+        } else if (!isLocalCommandText(blocks.find((b) => b.type === 'text')?.text)) {
           // New user text prompt — new turn starting
           cancelWaitingTimer(agentId, waitingTimers);
           clearAgentActivity(agent, agentId, agents, permissionTimers);
@@ -554,7 +571,7 @@ export function processTranscriptLine(
           startSignalTurn(agent);
           healthOnPrompt(agent, agents, traits);
         }
-      } else if (typeof content === 'string' && content.trim()) {
+      } else if (typeof content === 'string' && content.trim() && !isLocalCommandText(content)) {
         // New user text prompt — new turn starting
         cancelWaitingTimer(agentId, waitingTimers);
         clearAgentActivity(agent, agentId, agents, permissionTimers);
@@ -668,17 +685,37 @@ export function processTranscriptLine(
       }
 
       agent.isWaiting = true;
-      clearAwaiting(agent);
+      // Hooks mode: the Stop hook owns the wait and this record often lands after it, so
+      // clearing here would erase the question Stop just set.
+      if (!agent.hookDelivered) {
+        clearAwaiting(agent);
+        if (!isTeammate(agent)) {
+          agent.awaitingInput = true;
+          agent.awaitingReason = 'idle';
+        }
+      }
       agent.permissionSent = false;
       agent.hadToolsInTurn = false;
       healthOnTurnEnd(agent, agents, traits);
-      // Skip status post when hooks already handled it; the agent is Done either way, so
-      // the stamp is kept for the next resend (a no-op when the Stop hook stamped first).
-      // turn_duration = the turn completed, so this is "Done".
+      // Skip status post when hooks already handled it; the stamp is kept for the next resend
+      // (a no-op when the Stop hook stamped first). Without hooks the turn end is "your turn".
       if (!agent.hookDelivered) {
-        agents.broadcast(statusBroadcast(agentId, agent, 'waiting', turn?.timestampMs, false));
+        agents.broadcast(
+          statusBroadcast(
+            agentId,
+            agent,
+            'waiting',
+            turn?.timestampMs,
+            agent.awaitingInput === true,
+          ),
+        );
       } else {
-        stampStatus(agent, 'waiting', false, turn?.timestampMs);
+        stampStatus(
+          agent,
+          'waiting',
+          agent.awaitingInput === true && agent.awaitingReason !== 'idle',
+          turn?.timestampMs,
+        );
       }
     } else if (record.type && !agent.seenUnknownRecordTypes.has(record.type)) {
       // Log first occurrence of unrecognized record types to help diagnose issues

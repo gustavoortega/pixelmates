@@ -466,6 +466,111 @@ describe('transcriptParser: status truth (live path)', () => {
       expect(agent.question).toBeUndefined();
     });
   });
+
+  describe('a turn that ended on a prose question', () => {
+    // What the Stop hook left behind: the question wait, dated by the server clock.
+    const stopped = () =>
+      Object.assign(agent, {
+        isWaiting: true,
+        hookDelivered: true,
+        awaitingInput: true,
+        awaitingReason: 'question',
+        question: 'Ship it now?',
+        statusKey: 'waiting:input',
+        statusSince: 1_234,
+      });
+    const text = (t: string) => ({
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: t }] },
+    });
+    const turnEnd = { type: 'system', subtype: 'turn_duration', durationMs: 10 };
+    const kept = () => {
+      expect(agent.awaitingReason).toBe('question');
+      expect(agent.question).toBe('Ship it now?');
+      expect(agent.statusSince).toBe(1_234);
+    };
+
+    it('keeps the question through a late assistant text record and the transcript turn end', () => {
+      stopped();
+      feed(text('Merged. Ship it now?'));
+      feed(turnEnd);
+      kept();
+      expect(statuses()).toEqual([]);
+    });
+
+    it('a human prompt ends it', () => {
+      stopped();
+      feed({ type: 'user', message: { content: 'yes, ship it' } });
+      expect(statuses()).toEqual([{ type: 'agentStatus', id: 1, status: 'active' }]);
+      expect(agent.awaitingReason).toBeUndefined();
+      expect(agent.isWaiting).toBe(false);
+    });
+
+    it.each([
+      ['a caveat string', { content: '<local-command-caveat>Caveat</local-command-caveat>' }],
+      [
+        'a caveat block',
+        {
+          content: [{ type: 'text', text: '<local-command-caveat>Caveat</local-command-caveat>' }],
+        },
+      ],
+      ['a slash command', { content: '<command-name>/cost</command-name>' }],
+    ])('%s is not a prompt: the question stays and nothing is broadcast', (_case, message) => {
+      stopped();
+      feed({ type: 'user', message });
+      kept();
+      expect(statuses()).toEqual([]);
+    });
+
+    it("the lead's next tool call is the backstop that ends it", () => {
+      stopped();
+      feed({ type: 'user', message: { content: '<command-name>/x</command-name>' } });
+      feed({
+        type: 'assistant',
+        message: {
+          content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'ls' } }],
+        },
+      });
+      expect(agent.awaitingReason).toBeUndefined();
+      expect(statuses().at(-1)).toMatchObject({ status: 'active' });
+    });
+
+    it('an interrupt ends it as Done', () => {
+      stopped();
+      feed({
+        type: 'user',
+        message: { content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+      });
+      expect(statuses().at(-1)).toMatchObject({ status: 'waiting', awaitingInput: false });
+      expect(agent.awaitingReason).toBeUndefined();
+    });
+  });
+
+  describe('the transcript turn end without hooks', () => {
+    const turnEnd = { type: 'system', subtype: 'turn_duration', durationMs: 10 };
+
+    it('is the quiet "your turn" wait', () => {
+      agent.isWaiting = false;
+      feed(turnEnd);
+      expect(statuses()).toEqual([
+        {
+          type: 'agentStatus',
+          id: 1,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'idle',
+        },
+      ]);
+    });
+
+    it('stays Done for a teammate', () => {
+      Object.assign(agent, { isWaiting: false, agentName: 'tm', leadAgentId: 9 });
+      feed(turnEnd);
+      expect(statuses()).toEqual([
+        { type: 'agentStatus', id: 1, status: 'waiting', awaitingInput: false },
+      ]);
+    });
+  });
 });
 
 /** A Bash result. A background launch carries the task id on toolUseResult. */

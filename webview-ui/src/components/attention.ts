@@ -2,15 +2,16 @@
  * Who needs the user, as the attention rail lists them. Pure: the rail and the arrow keys lay
  * out what these return, and every rule is a table test.
  *
- * - Needs you: a permission prompt (an open tool row waiting on permission), a question (the
- *   agent stopped on a question for the user) or an idle wait (it finished and sits at its
- *   prompt). Stuck: an unacknowledged tripwire, or a health mark that says the agent spins
- *   (stuck, looping, stalled; a dead process is not something to answer).
+ * - Needs you: a permission prompt (an open tool row waiting on permission) or a question (the
+ *   agent stopped on a question for the user). Stuck: an unacknowledged tripwire, or a health
+ *   mark that says the agent spins (stuck, looping, stalled; a dead process is not something to
+ *   answer). Your turn: an idle wait (it finished and sits at its prompt), in its own list so a
+ *   finished session never crowds out one that is blocked. A loop asleep until a future wake is
+ *   not waiting on you, so it gets no Your turn ticket.
  * - One ticket per agent, in its most urgent kind: permission, then question, then idle, then
  *   stuck; a tripwire outranks a health mark, since it waits on an acknowledgement.
  * - Oldest first by the server's `since` (a ticket whose start is unknown goes after the dated
- *   ones, by id), except that idle waits come after every permission and question ticket: a
- *   finished session never outranks one that is blocked.
+ *   ones, by id), inside each list.
  * - No session text reaches a reason except the program (and allowlisted subcommand) the server
  *   already put in a Bash status, a tripwire's rule name, and the question the agent asked: the
  *   server redacted and cut it, and the rail's reason line is masked by privacy mode.
@@ -36,6 +37,8 @@ export interface AttentionAgent {
   awaitingReason?: 'question' | 'idle';
   /** What the agent asked, when the server could read it. */
   question?: string;
+  /** The loop's next wake, epoch ms; an idle wait before it is the loop sleeping, not a turn. */
+  loopNextAt?: number;
   /** The last tool the agent started, by its provider-agnostic name. */
   currentTool?: string | null;
   health?: AgentHealthView;
@@ -49,7 +52,7 @@ export interface AttentionAgent {
 export interface Ticket {
   id: number;
   kind: TicketKind;
-  /** The corner badge: `!` permission, `?` question, `–` idle wait, `×` stuck. */
+  /** The corner badge: `!` permission, `?` question, `–` finished (your turn), `×` stuck. */
   glyph: '!' | '?' | '–' | '×';
   /** The line to read from 2 m. */
   reason: string;
@@ -60,6 +63,8 @@ export interface Ticket {
 export interface Attention {
   needs: Ticket[];
   stuck: Ticket[];
+  /** Finished and waiting at the prompt: the user's turn, not an alarm. */
+  yours: Ticket[];
 }
 
 const BASH_STATUS_PREFIX = 'Running: ';
@@ -92,7 +97,7 @@ export function healthReason(health: AgentHealthView): string {
   }
 }
 
-function ticketFor(agent: AttentionAgent): Ticket | null {
+function ticketFor(agent: AttentionAgent, now: number): Ticket | null {
   const waiting = agent.tools?.find((t) => !t.done && t.permissionWait);
   if (waiting) {
     return {
@@ -103,23 +108,27 @@ function ticketFor(agent: AttentionAgent): Ticket | null {
       since: agent.permissionSince,
     };
   }
+  // A sleeping loop finished its pass; its next wake, not the user, moves it on.
+  const sleeping = agent.loopNextAt !== undefined && agent.loopNextAt > now;
   if (agent.status === 'waiting' && agent.awaitingInput) {
-    if (agent.awaitingReason === 'idle') {
+    if (agent.awaitingReason !== 'idle') {
+      return {
+        id: agent.id,
+        kind: 'question',
+        glyph: '?',
+        reason: agent.question ?? 'Has a question',
+        since: agent.statusSince,
+      };
+    }
+    if (!sleeping) {
       return {
         id: agent.id,
         kind: 'idle',
         glyph: '–',
-        reason: 'Finished, waiting for you',
+        reason: 'Finished',
         since: agent.statusSince,
       };
     }
-    return {
-      id: agent.id,
-      kind: 'question',
-      glyph: '?',
-      reason: agent.question ?? 'Has a question',
-      since: agent.statusSince,
-    };
   }
   if (agent.tripwire) {
     return {
@@ -143,7 +152,6 @@ function ticketFor(agent: AttentionAgent): Ticket | null {
 }
 
 function oldestFirst(a: Ticket, b: Ticket): number {
-  if ((a.kind === 'idle') !== (b.kind === 'idle')) return a.kind === 'idle' ? 1 : -1;
   if (a.since !== undefined && b.since !== undefined && a.since !== b.since) {
     return a.since - b.since;
   }
@@ -152,22 +160,24 @@ function oldestFirst(a: Ticket, b: Ticket): number {
   return a.id - b.id;
 }
 
-export function attentionTickets(agents: Iterable<AttentionAgent>): Attention {
+export function attentionTickets(agents: Iterable<AttentionAgent>, now: number): Attention {
   const needs: Ticket[] = [];
   const stuck: Ticket[] = [];
+  const yours: Ticket[] = [];
   for (const agent of agents) {
-    const ticket = ticketFor(agent);
+    const ticket = ticketFor(agent, now);
     if (!ticket) continue;
-    (ticket.kind === 'stuck' ? stuck : needs).push(ticket);
+    (ticket.kind === 'stuck' ? stuck : ticket.kind === 'idle' ? yours : needs).push(ticket);
   }
   needs.sort(oldestFirst);
   stuck.sort(oldestFirst);
-  return { needs, stuck };
+  yours.sort(oldestFirst);
+  return { needs, stuck, yours };
 }
 
 /** The order ←/→ walk: the rail's tickets top to bottom, then everyone else by id. */
 export function cycleOrder(attention: Attention, sessionIds: Iterable<number>): number[] {
-  const first = [...attention.needs, ...attention.stuck].map((t) => t.id);
+  const first = [...attention.needs, ...attention.stuck, ...attention.yours].map((t) => t.id);
   const listed = new Set(first);
   const rest = [...sessionIds].filter((id) => !listed.has(id)).sort((a, b) => a - b);
   return [...first, ...rest];

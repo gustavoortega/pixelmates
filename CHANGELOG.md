@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A question in prose counts.** When a session ends its turn asking you something in plain text, it goes to Needs you with that question, like a question tool. Needs Claude Code's `last_assistant_message` on Stop (hooks on).
+- **Your turn.** A session that finished goes to its own Your turn list at once, below Needs you and Stuck, instead of a minute later; its desk is not lit and its tag reads done.
+- **Bubbles beside the head.** A gold ? (bobbing) for a question, a sage check for a finished turn; the desk monitor shows the same.
+- **The tab counts.** The browser tab reads (2) pixelmates and its icon gets a gold dot while sessions need you.
+- **Double-click opens the inspector**, on an agent or a rail ticket. A click on the selected agent keeps it selected.
+
 ## pixelmates 1.0.4
 
 - **A question reads as a question.** When a session asks you something, the rail shows the question instead of "Allow AskUserQuestion?".

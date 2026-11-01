@@ -27,6 +27,8 @@ export interface MonitorRailProps {
   statuslineInstalled: boolean;
   /** A ticket was clicked: select, follow and focus that agent. */
   onSelect: (id: number) => void;
+  /** A ticket was double-clicked: select it and open the inspector on it. */
+  onOpen: (id: number) => void;
 }
 
 /** The face tile's inner box, CSS px, per rail mode: the tile minus its two borders. */
@@ -129,6 +131,7 @@ function FullTicket({
   medalScale,
   selected,
   onSelect,
+  onOpen,
 }: {
   view: TicketView;
   now: number;
@@ -137,6 +140,7 @@ function FullTicket({
   medalScale: number;
   selected: boolean;
   onSelect?: (id: number) => void;
+  onOpen?: (id: number) => void;
 }) {
   const { ticket } = view;
   const stuck = ticket.kind === 'stuck';
@@ -162,6 +166,7 @@ function FullTicket({
               // A mouse click leaves no focus behind, so Enter next opens the inspector.
               if (e.detail > 0) e.currentTarget.blur();
             },
+            onDoubleClick: () => onOpen?.(ticket.id),
           }
         : {})}
       className={stuck ? 'tk stuck' : 'tk'}
@@ -203,12 +208,14 @@ function SlimTicket({
   now,
   selected,
   onSelect,
+  onOpen,
   onHover,
 }: {
   view: TicketView;
   now: number;
   selected: boolean;
   onSelect: (id: number) => void;
+  onOpen: (id: number) => void;
   onHover: (id: number | null, rect?: DOMRect) => void;
 }) {
   const block = minutesBlock(view.ticket.since, now);
@@ -225,6 +232,7 @@ function SlimTicket({
         onSelect(view.ticket.id);
         if (e.detail > 0) e.currentTarget.blur();
       }}
+      onDoubleClick={() => onOpen(view.ticket.id)}
       onMouseEnter={(e) => onHover(view.ticket.id, e.currentTarget.getBoundingClientRect())}
       onMouseLeave={() => onHover(null)}
     >
@@ -237,21 +245,29 @@ function SlimTicket({
   );
 }
 
+type SectionTone = 'needs' | 'stuck' | 'yours';
+
+const SECTION_TITLE: Record<SectionTone, string> = {
+  needs: 'Needs you',
+  stuck: 'Stuck',
+  yours: 'Your turn',
+};
+
 function Section({
-  stuck,
+  tone,
   count,
   slim,
   children,
 }: {
-  stuck: boolean;
+  tone: SectionTone;
   count: number;
   slim: boolean;
   children: React.ReactNode;
 }) {
-  const title = stuck ? 'Stuck' : 'Needs you';
+  const title = SECTION_TITLE[tone];
   return (
     <>
-      <h2 className={stuck ? 'att-h stuck' : 'att-h'} title={slim ? title : undefined}>
+      <h2 className={tone === 'needs' ? 'att-h' : `att-h ${tone}`} title={slim ? title : undefined}>
         {!slim && <span>{title}</span>}
         <span className="cnt">{count}</span>
       </h2>
@@ -284,6 +300,7 @@ export function MonitorRail({
   limits,
   statuslineInstalled,
   onSelect,
+  onOpen,
 }: MonitorRailProps) {
   useNow(MONITOR_CLOCK_TICK_MS);
   const now = officeNow().getTime();
@@ -294,6 +311,7 @@ export function MonitorRail({
     tickets.map((t) => viewOf(officeState, t, now)).filter((v): v is TicketView => v !== null);
   const needs = views(attention.needs);
   const stuck = views(attention.stuck);
+  const yours = views(attention.yours);
   const render = (v: TicketView) =>
     slim ? (
       <SlimTicket
@@ -302,6 +320,7 @@ export function MonitorRail({
         now={now}
         selected={selected === v.ticket.id}
         onSelect={onSelect}
+        onOpen={onOpen}
         onHover={(id, rect) => setHover(id === null || !rect ? null : { id, rect })}
       />
     ) : (
@@ -313,9 +332,12 @@ export function MonitorRail({
         medalScale={layout.rail === 'wide' ? 2 : 1}
         selected={selected === v.ticket.id}
         onSelect={onSelect}
+        onOpen={onOpen}
       />
     );
-  const popView = hover ? [...needs, ...stuck].find((v) => v.ticket.id === hover.id) : undefined;
+  const popView = hover
+    ? [...needs, ...stuck, ...yours].find((v) => v.ticket.id === hover.id)
+    : undefined;
   return (
     <aside
       data-testid="monitor-rail"
@@ -327,16 +349,22 @@ export function MonitorRail({
       <div className="mon-list pixel-scrollbar">
         {/* A section with nobody in it is left out: absent, never 0. */}
         {needs.length > 0 && (
-          <Section stuck={false} count={needs.length} slim={slim}>
+          <Section tone="needs" count={needs.length} slim={slim}>
             {needs.map(render)}
           </Section>
         )}
         {stuck.length > 0 && (
-          <Section stuck count={stuck.length} slim={slim}>
+          <Section tone="stuck" count={stuck.length} slim={slim}>
             {stuck.map(render)}
           </Section>
         )}
+        {/* Finished work is not an alarm: "all clear" still shows above it. */}
         {needs.length + stuck.length === 0 && <AllClear slim={slim} />}
+        {yours.length > 0 && (
+          <Section tone="yours" count={yours.length} slim={slim}>
+            {yours.map(render)}
+          </Section>
+        )}
       </div>
       <PacePanel limits={limits} installed={statuslineInstalled} now={now} slim={slim} />
       {slim && popView && hover && (

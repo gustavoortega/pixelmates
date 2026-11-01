@@ -2,10 +2,12 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 
 import type { UsageLimits } from '../../../core/src/messages.js';
 import { useMonitorVersion } from '../hooks/useMonitorVersion.js';
+import { useTabBadge } from '../hooks/useTabBadge.js';
 import { requestRedraw } from '../office/engine/gameLoop.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { setMonitorFullPlates } from '../office/nameplate.js';
 import type { ToolActivity } from '../office/types.js';
+import { badgeCount } from '../tabBadge.js';
 import { attentionOf } from './attentionSource.js';
 import { monitorLayout } from './monitorLayout.js';
 import { MonitorRail } from './MonitorRail.js';
@@ -24,6 +26,8 @@ export interface MonitorShellProps {
   statuslineInstalled: boolean;
   privacy: boolean;
   onSelect: (id: number) => void;
+  /** A ticket was double-clicked: select it and open the inspector. */
+  onOpen: (id: number) => void;
   /** The App's tool rows and actions the inspector sheet reads. */
   inspector: InspectorWiring;
   children: ReactNode;
@@ -46,6 +50,7 @@ export function MonitorShell({
   statuslineInstalled,
   privacy,
   onSelect,
+  onOpen,
   inspector,
   children,
 }: MonitorShellProps) {
@@ -63,6 +68,7 @@ export function MonitorShell({
     requestRedraw();
   }, [layout.fullPlates]);
   const attention = attentionOf(officeState, agentTools, agentStatuses);
+  useTabBadge(badgeCount(attention));
   return (
     <div
       // Relative: below 1600 px the sheet overlays the stage, positioned on this row.
@@ -79,6 +85,7 @@ export function MonitorShell({
         limits={limits}
         statuslineInstalled={statuslineInstalled}
         onSelect={onSelect}
+        onOpen={onOpen}
       />
       {children}
       <MonitorSheet

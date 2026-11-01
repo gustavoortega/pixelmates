@@ -21,11 +21,9 @@ const NOW = Date.parse('2026-10-12T15:20:00Z');
 const pushRow = { toolId: 't1', status: 'Running: git push', done: false, permissionWait: true };
 
 function tickets(agents: AttentionAgent[]) {
-  const { needs, stuck } = attentionTickets(agents);
-  return {
-    needs: needs.map((t) => [t.id, t.kind, t.glyph, t.reason, t.since]),
-    stuck: stuck.map((t) => [t.id, t.kind, t.glyph, t.reason, t.since]),
-  };
+  const { needs, stuck, yours } = attentionTickets(agents, NOW);
+  const rows = (list: typeof needs) => list.map((t) => [t.id, t.kind, t.glyph, t.reason, t.since]);
+  return { needs: rows(needs), stuck: rows(stuck), yours: rows(yours) };
 }
 
 describe('attentionTickets', () => {
@@ -50,6 +48,7 @@ describe('attentionTickets', () => {
         [3, 'stuck', '×', 'tests failing ×4 · no edits', NOW - 9 * M],
         [4, 'stuck', '×', 'Force push', NOW - 3 * M],
       ],
+      yours: [],
     });
   });
 
@@ -61,7 +60,7 @@ describe('attentionTickets', () => {
     ['a question flag left from an earlier wait', { id: 1, status: 'idle', awaitingInput: true }],
     ['a dead process', { id: 1, health: { state: 'dead', reason: 'process_gone', count: 0 } }],
   ])('gives no ticket for %s', (_case, agent) => {
-    expect(tickets([agent])).toEqual({ needs: [], stuck: [] });
+    expect(tickets([agent])).toEqual({ needs: [], stuck: [], yours: [] });
   });
 
   it('gives an agent one ticket, in its most urgent kind', () => {
@@ -79,6 +78,7 @@ describe('attentionTickets', () => {
         [2, 'question', '?', 'Has a question', undefined],
       ],
       stuck: [[3, 'stuck', '×', 'Secrets read', undefined]],
+      yours: [],
     });
   });
 
@@ -91,14 +91,16 @@ describe('attentionTickets', () => {
     ['Using Workflow', 'Workflow', 'Allow Workflow?'],
     ['Subtask: deploy the thing', null, 'Allow this tool?'],
   ])('a prompt on "%s" (tool %s) reads %s', (status, currentTool, reason) => {
-    const [ticket] = attentionTickets([
-      { id: 1, currentTool, tools: [{ ...pushRow, status }] },
-    ]).needs;
+    const [ticket] = attentionTickets(
+      [{ id: 1, currentTool, tools: [{ ...pushRow, status }] }],
+      NOW,
+    ).needs;
     expect(ticket.reason).toBe(reason);
   });
 
-  // K1 / K6: a finished session that sat idle is told apart from one that asked something.
-  it('reads a question with its own words, an idle wait as finished, and falls back without text', () => {
+  // K1 / K6: a finished session that sat idle is told apart from one that asked something, and
+  // lands in Your turn, not Needs you.
+  it('reads a question with its own words, an idle wait as finished in Your turn, and falls back without text', () => {
     expect(
       tickets([
         {
@@ -118,50 +120,67 @@ describe('attentionTickets', () => {
           question: 'stale text',
           statusSince: NOW - 3 * M,
         },
-      ]).needs,
-    ).toEqual([
-      [1, 'question', '?', 'Which database?', NOW - 2 * M],
-      [2, 'question', '?', 'Has a question', undefined],
-      [3, 'idle', '–', 'Finished, waiting for you', NOW - 3 * M],
-    ]);
+      ]),
+    ).toMatchObject({
+      needs: [
+        [1, 'question', '?', 'Which database?', NOW - 2 * M],
+        [2, 'question', '?', 'Has a question', undefined],
+      ],
+      yours: [[3, 'idle', '–', 'Finished', NOW - 3 * M]],
+    });
   });
 
-  // K1b: idle waits come after every blocked ticket, however old.
-  it('lists an older idle wait after a newer question and a newer prompt', () => {
-    const order = attentionTickets([
-      {
-        id: 1,
-        status: 'waiting',
-        awaitingInput: true,
-        awaitingReason: 'idle',
-        statusSince: NOW - 60 * M,
-      },
-      {
-        id: 2,
-        status: 'waiting',
-        awaitingInput: true,
-        awaitingReason: 'question',
-        statusSince: NOW - M,
-      },
-      { id: 3, tools: [pushRow], permissionSince: NOW - 2 * M },
-      {
-        id: 4,
-        status: 'waiting',
-        awaitingInput: true,
-        awaitingReason: 'idle',
-        statusSince: NOW - 90 * M,
-      },
-    ]).needs.map((t) => t.id);
-    expect(order).toEqual([3, 2, 4, 1]);
+  // K1b: idle waits never mix into Needs you; each list is oldest first.
+  it('keeps idle waits out of Needs you, and lists each list oldest first', () => {
+    const { needs, yours } = attentionTickets(
+      [
+        {
+          id: 1,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'idle',
+          statusSince: NOW - 60 * M,
+        },
+        {
+          id: 2,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'question',
+          statusSince: NOW - M,
+        },
+        { id: 3, tools: [pushRow], permissionSince: NOW - 2 * M },
+        {
+          id: 4,
+          status: 'waiting',
+          awaitingInput: true,
+          awaitingReason: 'idle',
+          statusSince: NOW - 90 * M,
+        },
+      ],
+      NOW,
+    );
+    expect(needs.map((t) => t.id)).toEqual([3, 2]);
+    expect(yours.map((t) => t.id)).toEqual([4, 1]);
+  });
+
+  // A loop asleep until a future wake is not waiting on you.
+  it('gives a sleeping loop no Your turn ticket, and one past its wake a ticket', () => {
+    const idle = { status: 'waiting', awaitingInput: true, awaitingReason: 'idle' } as const;
+    expect(tickets([{ id: 1, ...idle, loopNextAt: NOW + 25 * M }]).yours).toEqual([]);
+    expect(tickets([{ id: 1, ...idle, loopNextAt: NOW - M }]).yours).toHaveLength(1);
+    expect(tickets([{ id: 1, ...idle }]).yours).toHaveLength(1);
   });
 
   it('lists the longest wait first, and tickets with no known start after the dated ones', () => {
-    const order = attentionTickets([
-      { id: 5, status: 'waiting', awaitingInput: true },
-      { id: 4, status: 'waiting', awaitingInput: true, statusSince: NOW - 2 * M },
-      { id: 3, tools: [pushRow], permissionSince: NOW - 20 * M },
-      { id: 2, status: 'waiting', awaitingInput: true },
-    ]).needs.map((t) => t.id);
+    const order = attentionTickets(
+      [
+        { id: 5, status: 'waiting', awaitingInput: true },
+        { id: 4, status: 'waiting', awaitingInput: true, statusSince: NOW - 2 * M },
+        { id: 3, tools: [pushRow], permissionSince: NOW - 20 * M },
+        { id: 2, status: 'waiting', awaitingInput: true },
+      ],
+      NOW,
+    ).needs.map((t) => t.id);
     expect(order).toEqual([3, 4, 2, 5]);
   });
 });
@@ -193,14 +212,24 @@ describe('minutesBlock', () => {
 });
 
 describe('the arrow keys', () => {
-  const attention = attentionTickets([
-    { id: 7, status: 'waiting', awaitingInput: true, statusSince: NOW - M },
-    { id: 3, tools: [pushRow], permissionSince: NOW - 9 * M },
-    { id: 9, tripwire: { ruleName: 'x', count: 1 }, tripwireSince: NOW - 30 * M },
-  ]);
+  const attention = attentionTickets(
+    [
+      { id: 7, status: 'waiting', awaitingInput: true, statusSince: NOW - M },
+      { id: 3, tools: [pushRow], permissionSince: NOW - 9 * M },
+      { id: 9, tripwire: { ruleName: 'x', count: 1 }, tripwireSince: NOW - 30 * M },
+      {
+        id: 5,
+        status: 'waiting',
+        awaitingInput: true,
+        awaitingReason: 'idle',
+        statusSince: NOW - 50 * M,
+      },
+    ],
+    NOW,
+  );
 
-  it('walk the rail top to bottom, then everyone else by id', () => {
-    expect(cycleOrder(attention, [1, 9, 3, 12, 7, 2])).toEqual([3, 7, 9, 1, 2, 12]);
+  it('walk the rail top to bottom (Needs you, Stuck, Your turn), then everyone else by id', () => {
+    expect(cycleOrder(attention, [1, 9, 3, 12, 7, 2, 5])).toEqual([3, 7, 9, 5, 1, 2, 12]);
   });
 
   it.each([

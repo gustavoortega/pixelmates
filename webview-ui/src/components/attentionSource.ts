@@ -1,3 +1,4 @@
+import { officeNow } from '../office/clock.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import type { ToolActivity } from '../office/types.js';
 import { type Attention, type AttentionAgent, attentionTickets } from './attention.js';
@@ -26,6 +27,7 @@ export function attentionOf(
       awaitingInput: ch?.waitingAwaitingInput === true,
       awaitingReason: os.awaitingReasons.get(id),
       question: os.questions.get(id),
+      loopNextAt: os.loops.get(id)?.nextAt,
       currentTool: ch?.currentTool,
       health: os.health.get(id),
       tripwire: os.tripwires.get(id),
@@ -35,5 +37,5 @@ export function attentionOf(
       tripwireSince: os.tripwireSince.get(id),
     };
   });
-  return attentionTickets(agents);
+  return attentionTickets(agents, officeNow().getTime());
 }

@@ -342,7 +342,7 @@ function line1Pieces(c: NameplateContent, compact: boolean, now: number) {
     state: words
       ? pixelTextWidth(`\u00B7 ${cmd ? '\u203A ' : ''}${words}`, m.stateFont) +
         (cmd ? Math.ceil(0.6 * m.stateFont) : 0) +
-        (c.state?.kind === 'done' ? 2 * 7 + 4 : 0)
+        (c.state?.kind === 'done' || c.state?.kind === 'finished' ? 2 * 7 + 4 : 0)
       : 0,
   };
 }

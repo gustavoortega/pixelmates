@@ -182,6 +182,18 @@ const SCENES: Scene[] = [
     cozyOff: true,
   },
   {
+    // The side bubble bobs in 600 ms steps, which the 100 ms ambient redraw already shows.
+    name: 'a question wait at its desk',
+    level: 'ambient',
+    furniture: DESK,
+    setup: (os) => {
+      seat(os);
+      os.showWaitingBubble(1, true);
+      os.setAwaiting(1, 'question', undefined);
+    },
+    check: (os) => expect(os.sideBubbleOf(os.characters.get(1)!)).toBe('ask'),
+  },
+  {
     name: 'a monitor left on in the layout',
     level: 'ambient',
     furniture: [{ uid: 'pc', type: 'PC_FRONT_ON_1', col: 3, row: 3 }],

@@ -94,6 +94,14 @@ export const BUTTON_LINE_WIDTH_ZOOM_FACTOR = 0.5;
 export const BUBBLE_FADE_DURATION_SEC = 0.5;
 export const BUBBLE_SITTING_OFFSET_PX = 10;
 export const BUBBLE_VERTICAL_OFFSET_PX = 24;
+/** Side bubble (a question or a finished turn): world px right of the character's center to the
+ *  bubble's left edge (its tail tip), and from the head-stack top down to the bubble's center,
+ *  so the tail points at the head. */
+export const SIDE_BUBBLE_DX = 7;
+export const SIDE_BUBBLE_CENTER_DY = 4;
+/** The question bubble steps up 1 world px and back on this period: a step bob, so the ambient
+ *  100 ms redraw already shows it. */
+export const ASK_BUBBLE_BOB_MS = 600;
 export const FALLBACK_FLOOR_COLOR = '#808080';
 
 // ── Tripwire alarm ───────────────────────────────────────────
@@ -1030,3 +1038,13 @@ export const STAGE_CHROME_SELECTORS: readonly string[] = ['[data-testid="stage-c
 export const WINDOW_TYPE_PREFIX = 'WINDOW';
 /** A wall banner that does not fit the band at its scale tries again this much smaller. */
 export const CREW_BANNER_WALL_SCALE_STEP = 0.05;
+
+// ── Browser tab badge ────────────────────────────────────────
+
+/** The favicon canvas edge, device px. */
+export const TAB_ICON_PX = 32;
+/** The badge dot's radius and the ink ring around it, as a share of the favicon edge. */
+export const TAB_BADGE_DOT_RADIUS = 0.2;
+export const TAB_BADGE_RING_WIDTH = 0.07;
+export const TAB_BADGE_DOT_COLOR = '#f6c64a';
+export const TAB_BADGE_RING_COLOR = '#3b2412';

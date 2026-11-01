@@ -15,6 +15,17 @@ import type { AgentState } from './types.js';
  * `session_id`. Hooks route to it directly; no redirection needed.
  */
 
+/**
+ * A teammate's turn ends are its lead's business, never a "your turn" or a question for the
+ * user. `agentName` is written only from team metadata, so a team lead (named, `isTeamLead`) is
+ * not one and a solo session never is.
+ */
+export function isTeammate(agent: AgentState): boolean {
+  return (
+    agent.leadAgentId !== undefined || (agent.agentName !== undefined && agent.isTeamLead !== true)
+  );
+}
+
 /** Is this agent an inline teammate (non-tmux) of the given lead? */
 export function isInlineTeammateOf(agent: AgentState, leadId: number): boolean {
   return agent.leadAgentId === leadId && !agent.teamUsesTmux;

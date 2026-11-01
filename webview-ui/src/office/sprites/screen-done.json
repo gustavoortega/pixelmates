@@ -1,0 +1,26 @@
+{
+  "name": "screen-done",
+  "description": "Monitor screen when the turn finished: sage fill, dark green check (8x6 world px, 2x art)",
+  "width": 16,
+  "height": 12,
+  "density": 2,
+  "palette": {
+    "_": "",
+    "F": "#8FBF9F",
+    "G": "#1F4A34"
+  },
+  "pixels": [
+    ["F","F","F","F","F","F","F","F","F","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","F","F","G","G","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","F","F","G","G","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","G","G","F","F","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","G","G","F","F","F","F","F"],
+    ["F","F","F","G","G","F","F","G","G","F","F","F","F","F","F","F"],
+    ["F","F","F","G","G","F","F","G","G","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","G","G","F","F","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","G","G","F","F","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","F","F","F","F","F","F","F"],
+    ["F","F","F","F","F","F","F","F","F","F","F","F","F","F","F","F"]
+  ]
+}
