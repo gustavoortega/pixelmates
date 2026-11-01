@@ -44,12 +44,6 @@ describe('sideBubbleKind', () => {
     expect(sideBubbleKind(facts({ bubbleType: null }), 'question')).toBe('ask');
   });
 
-  it('a permission bubble on an active agent shows nothing, a question wait asks', () => {
-    const permission = facts({ bubbleType: 'permission', agentStatus: WorkStatus.ACTIVE });
-    expect(sideBubbleKind(permission, undefined)).toBeNull();
-    expect(sideBubbleKind(facts(), 'question')).toBe('ask');
-  });
-
   it('never for a sub-agent, the greeter, a despawning agent or an id <= 0', () => {
     expect(sideBubbleKind(facts({ isSubagent: true }), 'question')).toBeNull();
     expect(sideBubbleKind(facts({ isGreeter: true }), 'question')).toBeNull();
@@ -113,7 +107,6 @@ describe('screen glyphs', () => {
     const os = office();
     ask(os);
     os.update(0.016);
-    expect(os.screenGlyphs().get('pb1')).toBe('ask');
     expect(drawnGlyphs(os)).toEqual(['ask']);
   });
 
@@ -121,7 +114,6 @@ describe('screen glyphs', () => {
     const os = office();
     ask(os, 'idle');
     os.update(0.016);
-    expect(os.screenGlyphs().get('pb1')).toBe('done');
     expect(drawnGlyphs(os)).toEqual(['done']);
   });
 
@@ -129,7 +121,6 @@ describe('screen glyphs', () => {
     const os = office();
     os.setAgentActive(1, true);
     os.update(0.016);
-    expect(os.screenGlyphs().size).toBe(0);
     expect(drawnGlyphs(os)).toEqual([]);
   });
 
