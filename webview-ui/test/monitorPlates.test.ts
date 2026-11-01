@@ -52,6 +52,7 @@ describe('C6.1 plate line 1: needs you > done > command > verb > asleep > idle',
     question: false,
     stuck: false,
     done: false,
+    finished: false,
     active: false,
     toolStatus: null,
     now: NOW,
@@ -64,6 +65,7 @@ describe('C6.1 plate line 1: needs you > done > command > verb > asleep > idle',
     stuck: true,
     stuckSince: NOW - 9 * MIN,
     done: true,
+    finished: true,
     active: true,
     toolStatus: 'Running: git commit',
     loopNextAt: NOW + 25 * MIN,
@@ -100,6 +102,19 @@ describe('C6.1 plate line 1: needs you > done > command > verb > asleep > idle',
       'asleep until 15:45',
     ],
     ['a loop past its wake is idle', { ...quiet, loopNextAt: NOW - MIN }, 'idle', 'idle'],
+    // The user's turn: after asleep (a sleeping loop is not waiting on you), before idle.
+    [
+      'a finished wait is done',
+      { ...quiet, finished: true, statusSince: NOW - 3 * MIN },
+      'finished',
+      'done',
+    ],
+    [
+      'a loop asleep outranks finished',
+      { ...quiet, finished: true, loopNextAt: all.loopNextAt },
+      'asleep',
+      'asleep until 15:45',
+    ],
     ['idle with its age', { ...quiet, statusSince: NOW - 68 * MIN }, 'idle', 'idle 1h08m'],
     // A status the server did not date (B7): idle, no age.
     ['idle with no since', quiet, 'idle', 'idle'],
@@ -108,6 +123,12 @@ describe('C6.1 plate line 1: needs you > done > command > verb > asleep > idle',
     const s = plateState(facts);
     expect(s.kind).toBe(kind);
     expect(stateText(s, NOW)).toBe(words);
+  });
+
+  it('a permission prompt over a finished wait still shows the alert', () => {
+    expect(plateState({ ...quiet, finished: true, permission: true }).kind).toBe('alert');
+    expect(plateState({ ...quiet, finished: true, question: true }).kind).toBe('alert');
+    expect(plateState({ ...quiet, finished: true, stuck: true }).kind).toBe('alert');
   });
 
   it('the alert tab: gold `!` and `?` wait on you, rust `×` is stuck, each with its minutes', () => {
@@ -143,6 +164,8 @@ describe('a monitor tag says its state whole or not at all', () => {
     ['a long command gives its first word', { kind: 'cmd', cmd: 'npm run test:webview' }, 'npm'],
     ['a long first word is left out', { kind: 'cmd', cmd: 'kubectl-argo-rollouts get' }, null],
     ['done', { kind: 'done' }, 'done'],
+    // The check is drawn as a pixel bitmap after the word: the text itself has no check mark.
+    ['finished', { kind: 'finished' }, 'done'],
   ])('%s', (_name, state, words) => {
     expect(tagStateText(state, NOW)).toBe(words);
     expect([...(words ?? '')].length).toBeLessThanOrEqual(TAG_STATE_MAX_CHARS);
