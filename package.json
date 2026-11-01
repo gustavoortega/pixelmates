@@ -17,9 +17,18 @@
   },
   "keywords": [
     "claude-code",
-    "agents",
+    "claude-code-plugin",
+    "claude-code-hooks",
+    "claude",
+    "mcp",
+    "ai-agents",
+    "coding-agents",
+    "developer-tools",
+    "agent-observability",
+    "monitor",
     "pixel-art",
-    "monitor"
+    "gamification",
+    "local-first"
   ],
   "workspaces": [
     "server",
