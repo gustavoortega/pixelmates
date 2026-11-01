@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## pixelmates 1.0.5
 
 - **A question in prose counts.** When a session ends its turn asking you something in plain text, it goes to Needs you with that question, like a question tool. Needs Claude Code's `last_assistant_message` on Stop (hooks on).
 - **Your turn.** A session that finished goes to its own Your turn list at once, below Needs you and Stuck, instead of a minute later; its desk is not lit and its tag reads done.
