@@ -49,12 +49,14 @@ const inside = (r: Rect, b: Rect): boolean =>
 
 describe('Q3.1 the desk that lights', () => {
   it.each([
-    [{ permission: true, question: false, stuck: false }, 'wait'],
-    [{ permission: false, question: true, stuck: false }, 'wait'],
-    [{ permission: false, question: false, stuck: true }, 'stuck'],
+    [{ permission: true, question: false, finished: false, stuck: false }, 'wait'],
+    [{ permission: false, question: true, finished: false, stuck: false }, 'wait'],
+    [{ permission: false, question: false, finished: false, stuck: true }, 'stuck'],
     // Waiting on you outranks stuck, like the plate's tab.
-    [{ permission: true, question: false, stuck: true }, 'wait'],
-    [{ permission: false, question: false, stuck: false }, null],
+    [{ permission: true, question: false, finished: false, stuck: true }, 'wait'],
+    [{ permission: false, question: false, finished: false, stuck: false }, null],
+    // Finished work is the user's turn, not an alarm: the desk stays dark.
+    [{ permission: false, question: false, finished: true, stuck: false }, null],
   ] as const)('%o lights %s', (facts, tone) => {
     expect(attentionTone(facts)).toBe(tone);
   });
@@ -324,6 +326,45 @@ describe('the room a tag may fill', () => {
       w: cols * T,
       h: rows * T,
     });
+  });
+});
+
+describe('an idle wait is finished, a question is a question', () => {
+  function seated(): OfficeState {
+    const layout = {
+      version: 1,
+      cols: 6,
+      rows: 6,
+      tiles: new Array<TileType>(36).fill(TileType.FLOOR_1),
+      furniture: [],
+    } as OfficeLayout;
+    const os = new OfficeState(layout);
+    os.addAgent(1);
+    os.showWaitingBubble(1, true);
+    return os;
+  }
+  const facts = (os: OfficeState, now?: number) => os.attentionFacts(os.characters.get(1)!, now);
+
+  it('an idle wait is finished and lights no desk', () => {
+    const os = seated();
+    os.setAwaiting(1, 'idle', undefined);
+    expect(facts(os)).toMatchObject({ finished: true, question: false });
+    expect(os.litDeskCount()).toBe(0);
+  });
+
+  it('a question wait lights the desk gold', () => {
+    const os = seated();
+    os.setAwaiting(1, 'question', 'Ship it?');
+    expect(facts(os)).toMatchObject({ finished: false, question: true });
+    expect(os.litDeskCount()).toBe(1);
+  });
+
+  it('an idle wait while a loop sleeps is not finished; once the wake passes it is', () => {
+    const os = seated();
+    os.setAwaiting(1, 'idle', undefined);
+    os.setLoop(1, { nextAt: 5_000 });
+    expect(facts(os, 1_000).finished).toBe(false);
+    expect(facts(os, 6_000).finished).toBe(true);
   });
 });
 

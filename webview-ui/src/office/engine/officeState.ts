@@ -2316,12 +2316,17 @@ export class OfficeState {
 
   /** What the office knows about a session needing the user (the plate's alert and the desk
    *  highlight read the same facts): a pending prompt, a question, a spin. */
-  attentionFacts(ch: Character): AttentionFacts {
+  attentionFacts(ch: Character, now: number = officeNow().getTime()): AttentionFacts {
     const health = this.health.get(ch.id)?.state;
+    // The waiting bubble fades after two seconds; the status it came with stays.
+    const waiting = ch.agentStatus === WorkStatus.WAITING && ch.waitingAwaitingInput === true;
+    const idle = this.awaitingReasons.get(ch.id) === 'idle';
+    const nextWake = this.loops.get(ch.id)?.nextAt;
     return {
       permission: ch.bubbleType === 'permission' || this.permissionSince.has(ch.id),
-      // The waiting bubble fades after two seconds; the status it came with stays.
-      question: ch.agentStatus === WorkStatus.WAITING && ch.waitingAwaitingInput === true,
+      question: waiting && !idle,
+      // A loop asleep until its next wake is not waiting on the user.
+      finished: waiting && idle && !(nextWake !== undefined && nextWake > now),
       stuck:
         health === 'stuck' ||
         health === 'looping' ||

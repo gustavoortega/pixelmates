@@ -28,9 +28,9 @@ Your office is copied from `~/.pixel-agents` on first run; nothing there is chan
 
 <img src="docs/images/needs-you.png" alt="The rail: Ada waits 12 minutes on Allow git push, Alan asks whether the date picker should start the week on Monday or Sunday, Grace is stuck on failing tests; their desks are lit in the office" width="880">
 
-The rail lists the sessions waiting on you and lights their desks. A permission prompt names its command; a question shows its own words. A session that is stuck, looping or stalled is named too.
+The rail lists the sessions waiting on you and lights their desks. A permission prompt names its command; a question shows its own words. A session that is stuck, looping or stalled is named too. A session that finished and waits at its prompt sits under Your turn, and its desk stays dark. In a browser tab the title counts the sessions that need you, `(2) pixelmates`, and the icon gets a gold dot.
 
-The arrow keys select, Enter inspects, P masks session text.
+The arrow keys select, Enter inspects (so does a double-click on a ticket or an agent), P masks session text. A click on the selected agent keeps it selected; click the floor or press Esc to deselect.
 
 ## Privacy
 

@@ -1030,3 +1030,13 @@ export const STAGE_CHROME_SELECTORS: readonly string[] = ['[data-testid="stage-c
 export const WINDOW_TYPE_PREFIX = 'WINDOW';
 /** A wall banner that does not fit the band at its scale tries again this much smaller. */
 export const CREW_BANNER_WALL_SCALE_STEP = 0.05;
+
+// ── Browser tab badge ────────────────────────────────────────
+
+/** The favicon canvas edge, device px. */
+export const TAB_ICON_PX = 32;
+/** The badge dot's radius and the ink ring around it, as a share of the favicon edge. */
+export const TAB_BADGE_DOT_RADIUS = 0.2;
+export const TAB_BADGE_RING_WIDTH = 0.07;
+export const TAB_BADGE_DOT_COLOR = '#f6c64a';
+export const TAB_BADGE_RING_COLOR = '#3b2412';

@@ -28,6 +28,9 @@ export interface AttentionFacts {
   permission: boolean;
   /** The agent stopped on a question for the user. */
   question: boolean;
+  /** The agent finished and sits at its prompt (not a loop asleep until its next wake). The
+   *  desk stays dark: it is the user's turn, not an alarm. */
+  finished: boolean;
   /** Health stuck, looping or stalled, or an unacknowledged tripwire. */
   stuck: boolean;
 }

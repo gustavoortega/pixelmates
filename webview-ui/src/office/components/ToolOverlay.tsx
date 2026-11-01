@@ -254,7 +254,7 @@ function PlateBox({
   const words = plateStateWords(plate, compact, now);
   const kind = plate.state?.kind;
   const stateColor =
-    kind === 'done'
+    kind === 'done' || kind === 'finished'
       ? PLATE_DONE_COLOR
       : kind === 'cmd' && !style.quiet
         ? PLATE_CMD_COLOR
@@ -333,7 +333,9 @@ function PlateBox({
             data-testid="plate-state"
           >
             <span className="shrink-0">{kind === 'cmd' ? '\u00B7 \u203A' : '\u00B7'}</span>
-            {kind === 'done' && <PixelCheck px={compact ? 1 : 2} color={PLATE_DONE_COLOR} />}
+            {(kind === 'done' || kind === 'finished') && (
+              <PixelCheck px={compact ? 1 : 2} color={PLATE_DONE_COLOR} />
+            )}
             <span className={`overflow-hidden text-ellipsis${kind === 'cmd' ? ' pv' : ''}`}>
               {words}
             </span>
@@ -550,6 +552,7 @@ function plateFacts(
     return {
       permission: ch.bubbleType === 'permission',
       question: false,
+      finished: false,
       stuck: false,
       // A sub-agent's task is over once its parent's spawn row is done.
       done: spawn?.done === true,
@@ -565,6 +568,7 @@ function plateFacts(
     permission: attention.permission || !!tools?.some((t) => t.permissionWait && !t.done),
     permissionSince: officeState.permissionSince.get(id),
     question: attention.question,
+    finished: attention.finished,
     statusSince: officeState.statusSince.get(id),
     stuck: attention.stuck,
     stuckSince: officeState.healthSince.get(id) ?? officeState.tripwireSince.get(id),

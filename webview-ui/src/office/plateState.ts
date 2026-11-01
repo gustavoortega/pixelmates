@@ -1,7 +1,8 @@
 /**
  * What a plate says an agent is doing, by precedence: it needs you (an alert tab with the minutes
  * it has waited), done (a helper whose task finished), the command it runs (`› git commit`), the
- * verb of its tool, asleep (a loop waiting for its next wake), idle with how long. Pure: the
+ * verb of its tool, asleep (a loop waiting for its next wake), finished (it waits at its prompt:
+ * your turn), idle with how long. Pure: the
  * overlay reads the office and passes plain facts, the tests pass a table.
  */
 
@@ -26,6 +27,7 @@ export interface PlateAlert {
 export type PlateState =
   | { kind: 'alert'; alert: PlateAlert }
   | { kind: 'done' }
+  | { kind: 'finished' }
   | { kind: 'cmd'; cmd: string }
   | { kind: 'verb'; verb: string }
   | { kind: 'asleep'; until: number }
@@ -37,6 +39,8 @@ export interface PlateFacts {
   permissionSince?: number;
   /** The agent stopped on a question for the user. */
   question: boolean;
+  /** The agent finished and waits at its prompt: the user's turn (drawn `done` + a check). */
+  finished: boolean;
   /** The status's `since`: the question's start, or the idle start. */
   statusSince?: number;
   /** Health stuck, looping or stalled, or an unacknowledged tripwire. */
@@ -87,6 +91,7 @@ export function plateState(f: PlateFacts): PlateState {
   if (f.active) return { kind: 'verb', verb: toolVerb(f.toolStatus) };
   if (f.loopNextAt !== undefined && f.loopNextAt > f.now)
     return { kind: 'asleep', until: f.loopNextAt };
+  if (f.finished) return { kind: 'finished' };
   return { kind: 'idle', since: f.statusSince ?? null };
 }
 
@@ -111,6 +116,7 @@ export function stateText(s: PlateState, now: number): string | null {
     case 'alert':
       return null;
     case 'done':
+    case 'finished':
       return 'done';
     case 'cmd':
       return s.cmd;
@@ -150,6 +156,7 @@ export function tagStateText(s: PlateState, now: number): string | null {
     case 'alert':
       return null;
     case 'done':
+    case 'finished':
       return 'done';
     case 'cmd': {
       const cmd = s.cmd.trim();

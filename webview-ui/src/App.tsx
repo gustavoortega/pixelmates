@@ -9,7 +9,7 @@ import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { DebugView } from './components/DebugView.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { HudCard } from './components/HudCard.js';
-import { closeSheet } from './components/inspector/sheetControl.js';
+import { closeSheet, openSheet } from './components/inspector/sheetControl.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { LightingTint } from './components/LightingTint.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
@@ -328,6 +328,21 @@ function App() {
 
   // The inspector sheet and the Usage panel share the right edge: opening the sheet closes it.
   const handleInspectorOpen = useCallback(() => setIsUsageOpen(false), []);
+  // A double-click: select the agent when the rail names one (the canvas selected it already),
+  // then open the sheet the way Enter does.
+  const handleOpenInspector = useCallback(
+    (id?: number) => {
+      const os = getOfficeState();
+      if (id !== undefined) {
+        os.selectedAgentId = id;
+        os.cameraFollowId = id;
+      }
+      openSheet(os);
+      handleInspectorOpen();
+      requestRedraw();
+    },
+    [handleInspectorOpen],
+  );
   // Opening or closing the sheet re-frames the office in the width it leaves: beside it from
   // 1600 px (the stage narrows), in front of it below (the sheet covers `insetPx` of the stage).
   // Open, the fit keeps the office's zoom (AutoFit.setSheet); closed, it frames as before. It
@@ -493,6 +508,7 @@ function App() {
       <OfficeCanvas
         officeState={officeState}
         onClick={handleClick}
+        onOpenInspector={handleOpenInspector}
         isEditMode={editor.isEditMode}
         editorState={editorState}
         onEditorTileAction={editor.handleEditorTileAction}
@@ -802,6 +818,7 @@ function App() {
       statuslineInstalled={statuslineInstalled}
       privacy={privacy}
       onSelect={handleRailSelect}
+      onOpen={handleOpenInspector}
       inspector={{
         agentTools,
         subagentTools,

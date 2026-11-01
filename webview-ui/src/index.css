@@ -500,6 +500,14 @@
 .att-h.stuck .cnt {
   background: var(--mon-rust-light);
 }
+/* Your turn: finished work waiting for you, sage like the all-clear tile, not an alarm. */
+.att-h.yours {
+  color: var(--mon-sage);
+  margin-top: 8px;
+}
+.att-h.yours .cnt {
+  background: var(--mon-sage);
+}
 .mon-rail[data-rail='slim'] .att-h {
   justify-content: center;
   margin: 0;
@@ -603,6 +611,9 @@
   background: var(--mon-rust);
   color: var(--mon-light);
 }
+.tk[data-kind='idle'] .tk-icon {
+  background: var(--mon-sage);
+}
 .tk-md {
   position: absolute;
   left: -7px;
@@ -694,6 +705,9 @@
 .tk.stuck .tk-time {
   background: var(--mon-rust);
   color: var(--mon-light);
+}
+.tk[data-kind='idle'] .tk-time {
+  background: var(--mon-sage);
 }
 .tk-time > .unit {
   font-size: var(--tk-unit);
@@ -787,6 +801,10 @@
   border: var(--bw) solid var(--mon-ink);
   border-top: 0;
   box-shadow: 0 var(--sh) 0 var(--mon-ink);
+}
+.tk-slim[data-kind='idle'] .min,
+.tk-slim[data-kind='idle'] .tk-icon {
+  background: var(--mon-sage);
 }
 .tk-slim:hover .tk-face {
   filter: brightness(1.06);

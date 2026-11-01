@@ -37,6 +37,8 @@ import { computeNormalModeCursor } from './officeCanvasCursor.js';
 interface OfficeCanvasProps {
   officeState: OfficeState;
   onClick: (agentId: number) => void;
+  /** A double-click on an agent: open the inspector on it (the canvas has selected it). */
+  onOpenInspector: () => void;
   isEditMode: boolean;
   editorState: EditorState;
   onEditorTileAction: (col: number, row: number) => void;
@@ -69,6 +71,7 @@ function insetDevPx(autoFit: AutoFit): number {
 export function OfficeCanvas({
   officeState,
   onClick,
+  onOpenInspector,
   isEditMode,
   editorState,
   onEditorTileAction,
@@ -883,6 +886,21 @@ export function OfficeCanvas({
     [editorState, isEditMode, officeState, onDragMove, onEditorSelectionChange],
   );
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (isEditMode) return;
+      const pos = screenToWorld(e.clientX, e.clientY);
+      if (!pos) return;
+      const hitId = officeState.getCharacterAt(pos.worldX, pos.worldY);
+      if (hitId === null) return;
+      officeState.selectedAgentId = hitId;
+      officeState.cameraFollowId = hitId;
+      requestRedraw();
+      onOpenInspector();
+    },
+    [officeState, onOpenInspector, screenToWorld, isEditMode],
+  );
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       requestRedraw();
@@ -894,14 +912,10 @@ export function OfficeCanvas({
       if (hitId !== null) {
         // Dismiss any active bubble on click
         officeState.dismissBubble(hitId);
-        // Toggle selection: click same agent deselects, different agent selects
-        if (officeState.selectedAgentId === hitId) {
-          officeState.selectedAgentId = null;
-          officeState.cameraFollowId = null;
-        } else {
-          officeState.selectedAgentId = hitId;
-          officeState.cameraFollowId = hitId;
-        }
+        // A hit always selects (a second click keeps it, so a double-click can open the sheet);
+        // deselect is an empty click or Esc.
+        officeState.selectedAgentId = hitId;
+        officeState.cameraFollowId = hitId;
         onClick(hitId); // still focus terminal
         return;
       }
@@ -1062,6 +1076,7 @@ export function OfficeCanvas({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onAuxClick={handleAuxClick}
         onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenu}
