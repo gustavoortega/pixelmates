@@ -101,6 +101,8 @@ export interface FurnitureLook {
   sprite?: (sprite: SpriteData) => SpriteData;
   /** World px to push the drawing down; the sort depth stays where the item stands. */
   dy?: number;
+  /** Fill the PC's screen with this glyph (an agent waiting on the user sits at it). */
+  screenGlyph?: 'ask' | 'done';
 }
 
 /** Convert placed furniture into renderable FurnitureInstance[]. `looks` is keyed by item uid. */
@@ -184,6 +186,7 @@ export function layoutToFurnitureInstances(
       y: drawY,
       zY,
       ...(mirrored ? { mirrored: true } : {}),
+      ...(look?.screenGlyph ? { screenGlyph: look.screenGlyph } : {}),
     });
   }
   return instances;
