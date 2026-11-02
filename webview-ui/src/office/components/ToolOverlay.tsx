@@ -186,6 +186,8 @@ interface ToolOverlayProps {
   panRef: React.RefObject<{ x: number; y: number }>;
   onCloseAgent: (id: number) => void;
   onAckTripwire: (id: number, count: number) => void;
+  /** Double-click on a selected agent's card opens its inspector. */
+  onOpenInspector: (id: number) => void;
   /** Room signs are drawn: plates keep clear of them. Hidden signs take no room. */
   showAreas?: boolean;
 }
@@ -836,6 +838,7 @@ export function ToolOverlay({
   panRef,
   onCloseAgent,
   onAckTripwire,
+  onOpenInspector,
   showAreas = true,
 }: ToolOverlayProps) {
   // Re-render after every drawn canvas frame. The frame's wall-clock time drives the cache
@@ -1513,6 +1516,27 @@ export function ToolOverlay({
             data-testid="agent-overlay"
             data-agent-id={id}
             data-status={status}
+            // A selected card takes pointer events, so the canvas double-click never sees
+            // it. Sub-agents have no inspector. A click's stopPropagation does not stop the
+            // dblclick that follows, so the guard keeps close and the alarm line from
+            // opening a removed or half-acknowledged agent.
+            onDoubleClick={
+              isSelected && !isSub
+                ? (e) => {
+                    if ((e.target as Element).closest('button, [data-no-open]')) return;
+                    e.stopPropagation();
+                    onOpenInspector(id);
+                  }
+                : undefined
+            }
+            onMouseDown={
+              isSelected && !isSub
+                ? (e) => {
+                    // Keeps the double-click from selecting card text.
+                    if (e.detail > 1) e.preventDefault();
+                  }
+                : undefined
+            }
           >
             <div
               className="flex items-center border-border px-8 pt-2 pb-4 gap-5 pixel-panel whitespace-nowrap max-w-2xs"
@@ -1565,6 +1589,7 @@ export function ToolOverlay({
                     }}
                     title="Click to acknowledge"
                     data-testid="tripwire-alarm"
+                    data-no-open
                     onClick={(e) => {
                       e.stopPropagation();
                       onAckTripwire(id, tripwire.count);

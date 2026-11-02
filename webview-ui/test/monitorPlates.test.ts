@@ -281,6 +281,7 @@ function overlayHtml(os: OfficeState, agents: number[], zoom: number): string {
       panRef: { current: { x: 0, y: 0 } },
       onCloseAgent: () => {},
       onAckTripwire: () => {},
+      onOpenInspector: () => {},
     }),
   );
 }
@@ -431,6 +432,7 @@ describe('C6.4 the crew banner', () => {
             panRef: { current: { x: 0, y: 0 } },
             onCloseAgent: () => {},
             onAckTripwire: () => {},
+            onOpenInspector: () => {},
           }),
         );
       };
