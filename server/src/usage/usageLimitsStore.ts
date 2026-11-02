@@ -10,6 +10,11 @@ export type LimitsAnchorCallback = (window: LimitWindowKey, resetsAt: number, no
 
 const WINDOW_KEYS: readonly LimitWindowKey[] = ['fiveHour', 'sevenDay'];
 
+/** A stored window that no post has carried for this long, while posts keep arriving, belongs to an account that no
+ *  longer reports it (one without a 5 h window sends `five_hour` null on every post). Longer than a session's
+ *  refresh so one that merely lacks the field cannot clear it, and short enough that the row does not linger. */
+export const LIMIT_WINDOW_ABSENT_MS = 10 * 60_000;
+
 /** Usage only grows inside a window and a new window always resets later, so a sample is "not older" when its reset
  *  is later, or the same with equal or higher usage. Equal counts: a session confirming the same numbers keeps the
  *  reading fresh. */
@@ -30,10 +35,17 @@ function toWindow(sample: LimitSample): LimitWindow {
  * the same limits from different moments, and with `refreshInterval` an idle session re-posts its last snapshot
  * every refresh, so "the latest post wins" would flip the panel between a stale and a fresh value. Each window keeps
  * one sample and takes an incoming one only when it is not older; a post with nothing accepted changes nothing and
- * broadcasts nothing.
+ * broadcasts nothing. A window no post has carried for LIMIT_WINDOW_ABSENT_MS drops back to null, but only inside
+ * `set`: while every session is idle nothing arrives, and the last reading stays for the webview to age.
  */
 export class UsageLimitsStore {
   private readonly samples: Record<LimitWindowKey, LimitWindow | null> = {
+    fiveHour: null,
+    sevenDay: null,
+  };
+  /** The last time any valid post carried a sample for the window, accepted or not: an older reading still proves the
+   *  account has that window. */
+  private readonly carriedAt: Record<LimitWindowKey, number | null> = {
     fiveHour: null,
     sevenDay: null,
   };
@@ -46,6 +58,9 @@ export class UsageLimitsStore {
 
   /** Merge one validated post received at `now` (epoch ms). */
   set(body: UsageLimitsBody, now: number): void {
+    for (const key of WINDOW_KEYS) {
+      if (body[key] !== null) this.carriedAt[key] = now;
+    }
     let accepted = false;
     for (const key of WINDOW_KEYS) {
       const sample = body[key];
@@ -60,9 +75,21 @@ export class UsageLimitsStore {
         this.onLimits?.(key, next.resetsAt, now);
       }
     }
-    if (!accepted) return;
-    // Advances even when the values are equal: the staleness label reads it.
-    this.receivedAt = now;
+    let cleared = false;
+    for (const key of WINDOW_KEYS) {
+      const carried = this.carriedAt[key];
+      if (
+        this.samples[key] !== null &&
+        carried !== null &&
+        now - carried >= LIMIT_WINDOW_ABSENT_MS
+      ) {
+        this.samples[key] = null;
+        cleared = true;
+      }
+    }
+    if (!accepted && !cleared) return;
+    // Advances even when the values are equal: the staleness label reads it. A clear alone leaves it.
+    if (accepted) this.receivedAt = now;
     this.store.broadcast({ ...this.latest() });
   }
 

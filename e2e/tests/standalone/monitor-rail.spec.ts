@@ -653,3 +653,129 @@ test.describe('Standalone / monitor plates', () => {
     await expect(plate.locator('.nameplate-tag')).toHaveCount(0);
   });
 });
+
+async function deliverAll(page: Page, messages: Array<Record<string, unknown>>): Promise<void> {
+  await page.evaluate((msgs) => {
+    const send = (window as MonitorWindow).__pixelAgentsDeliver;
+    if (!send) throw new Error('message delivery missing');
+    for (const m of msgs) send(m);
+  }, messages);
+}
+
+const idleStatus = (id: number, since: number) => ({
+  type: 'agentStatus',
+  id,
+  status: 'waiting',
+  awaitingInput: true,
+  awaitingReason: 'idle',
+  since,
+});
+
+test.describe('Standalone / monitor seen', () => {
+  test('opening a Your turn session hides its ticket until its next turn, with the sheet open or shut @area:standalone', async ({
+    page,
+    standalone,
+  }) => {
+    void standalone;
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const x = 9_701;
+    const y = 9_702;
+    const t = Date.now();
+    const yours = (id: number) =>
+      page.locator(`[data-testid="monitor-ticket"][data-kind="idle"][data-agent-id="${id}"]`);
+    const sheet = page.locator('[data-testid="monitor-sheet"][data-open="true"]');
+    await deliverAll(page, [
+      { type: 'agentCreated', id: x, folderName: 'repo-x' },
+      { type: 'agentCreated', id: y, folderName: 'repo-y' },
+      idleStatus(x, t),
+      idleStatus(y, t + 1),
+    ]);
+    await expect(yours(x)).toBeVisible();
+
+    // Open, close: the ticket stays gone and the agent stays in the office.
+    await yours(x).dblclick();
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expect(yours(x)).toHaveCount(0);
+    const inOffice = await page.evaluate(
+      (id) =>
+        (window as MonitorWindow).__pixelAgentsTestHooks
+          ?.getCharacters?.()
+          .some((c) => c.id === id),
+      x,
+    );
+    expect(inOffice).toBe(true);
+
+    // Its next turn is a new Your turn.
+    await deliverAll(page, [idleStatus(x, t + 10)]);
+    await expect(yours(x)).toBeVisible();
+
+    // A turn that ends under an already-open sheet had no gesture: the ticket stays.
+    await yours(x).dblclick();
+    await expect(sheet).toBeVisible();
+    await expect(yours(x)).toHaveCount(0);
+    await deliverAll(page, [idleStatus(x, t + 20)]);
+    await expect(yours(x)).toBeVisible();
+    // Opening it again marks it, whether or not the sheet was already open.
+    await yours(x).dblclick();
+    await expect(yours(x)).toHaveCount(0);
+
+    // Landing on another agent with the sheet open counts as opening it.
+    await deliverAll(page, [idleStatus(x, t + 30)]);
+    await expect(yours(x)).toBeVisible();
+    await yours(y).dblclick();
+    await expect(sheet).toBeVisible();
+    await yours(x).click();
+    await expect(yours(x)).toHaveCount(0);
+  });
+});
+
+test.describe('Standalone / monitor compact pace', () => {
+  test('the Pace panel turns into one row when the ticket list overflows and back when it fits @area:standalone', async ({
+    page,
+    standalone,
+  }) => {
+    void standalone;
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    // The status line on and a reading for both windows, as the server would send them.
+    const now = Date.now();
+    await deliverAll(page, [
+      { type: 'hooksStatus', providerId: 'claude-statusline', installed: true },
+      {
+        type: 'usageLimits',
+        receivedAt: now,
+        fiveHour: { usedPercentage: 30, resetsAt: now + 3 * 60 * MIN },
+        sevenDay: { usedPercentage: 20, resetsAt: now + 3 * 24 * 60 * MIN },
+      },
+    ]);
+    const messages: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < 8; i++) {
+      const id = 9_800 + i;
+      messages.push(
+        { type: 'agentCreated', id, folderName: `repo-${i}` },
+        { type: 'agentStatus', id, status: 'waiting', awaitingInput: true, since: now - i * MIN },
+      );
+    }
+    await deliverAll(page, messages);
+
+    const pace = page.getByTestId('pace-panel');
+    const list = page.locator('.mon-list');
+    await expect(page.getByTestId('monitor-rail')).toHaveAttribute('data-rail', 'mid');
+    await expect(pace).toHaveClass(/pace-slim/);
+    await expect(pace).toContainText('5h');
+
+    await page.setViewportSize({ width: 1280, height: 1600 });
+    // The list must really have room, or "full again" could not be told from "never compact".
+    await expect.poll(() => list.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+    await expect(pace).not.toHaveClass(/pace-slim/);
+    await expect(pace.locator('[data-window="fiveHour"]')).toBeVisible();
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(pace).toHaveClass(/pace-slim/);
+    expect(errors).toEqual([]);
+  });
+});

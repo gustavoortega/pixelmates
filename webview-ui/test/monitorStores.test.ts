@@ -277,3 +277,79 @@ describe('C0.5 nextRenderVersion: re-render only when the stores or the selectio
     });
   });
 });
+
+describe('seen turns on OfficeState', () => {
+  const S1 = T + 100;
+  const S2 = T + 200;
+
+  function fake(initial?: string) {
+    const writes: string[] = [];
+    return {
+      writes,
+      getItem: () => initial ?? null,
+      setItem: (_key: string, value: string) => void writes.push(value),
+    };
+  }
+
+  const status = (id: number, since: number | undefined, over: Record<string, unknown> = {}) => ({
+    type: 'agentStatus',
+    id,
+    status: 'waiting',
+    awaitingInput: true,
+    awaitingReason: 'idle',
+    since,
+    ...over,
+  });
+
+  it('reads the saved list at construction, and a newer turn of the same agent is unseen', () => {
+    const os = new OfficeState(floorLayout(), fake(JSON.stringify([[7, S1]])));
+    applyMonitorMessage(os, status(7, S1));
+    expect(os.isSeen(7)).toBe(true);
+    applyMonitorMessage(os, status(7, S2));
+    expect(os.isSeen(7)).toBe(false);
+  });
+
+  it('saves a mark once: the same turn marked again writes nothing and does not re-render', () => {
+    const storage = fake();
+    const os = new OfficeState(floorLayout(), storage);
+    applyMonitorMessage(os, status(7, S2));
+    os.markSeenIfYourTurn(7);
+    expect(storage.writes.map((w) => JSON.parse(w))).toEqual([[[7, S2]]]);
+    const version = os.monitorVersion;
+    os.markSeenIfYourTurn(7);
+    expect(storage.writes).toHaveLength(1);
+    expect(os.monitorVersion).toBe(version);
+  });
+
+  it('forgets the mark when the agent leaves its idle wait, and saves only a real removal', () => {
+    const storage = fake();
+    const os = new OfficeState(floorLayout(), storage);
+    applyMonitorMessage(os, status(7, S1));
+    os.markSeenIfYourTurn(7);
+    expect(storage.writes).toHaveLength(1);
+
+    applyMonitorMessage(os, { type: 'agentStatus', id: 7, status: 'active', since: S2 });
+    expect(os.seenTurns.has(7)).toBe(false);
+    expect(storage.writes).toHaveLength(2);
+
+    applyMonitorMessage(os, { type: 'agentStatus', id: 8, status: 'active', since: S2 });
+    expect(storage.writes).toHaveLength(2);
+  });
+
+  it('does not call a turn with no since seen until it was marked', () => {
+    const os = new OfficeState(floorLayout(), fake());
+    applyMonitorMessage(os, status(7, undefined));
+    expect(os.isSeen(7)).toBe(false);
+    os.markSeenIfYourTurn(7);
+    expect(os.isSeen(7)).toBe(true);
+  });
+
+  it('marks nothing for an agent waiting on a question', () => {
+    const storage = fake();
+    const os = new OfficeState(floorLayout(), storage);
+    applyMonitorMessage(os, status(7, S1, { awaitingReason: 'question' }));
+    os.markSeenIfYourTurn(7);
+    expect(os.seenTurns.size).toBe(0);
+    expect(storage.writes).toHaveLength(0);
+  });
+});

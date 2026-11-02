@@ -70,6 +70,7 @@ import {
   SEAT_AVAILABLE_COLOR,
   SEAT_BUSY_COLOR,
   SEAT_OWN_COLOR,
+  SEEN_TURN_ALPHA,
   SELECTION_DASH_PATTERN,
   SELECTION_HIGHLIGHT_COLOR,
   SHAFT_BLEND_MODE,
@@ -575,11 +576,15 @@ export function renderScene(
           if (f.screenGlyph) {
             // A question or a finished turn fills the screen over the PC art.
             const glyph = f.screenGlyph === 'ask' ? SCREEN_ASK_SPRITE : SCREEN_DONE_SPRITE;
+            // A turn the user already opened keeps its check, dimmed.
+            const previousAlpha = c.globalAlpha;
+            if (f.screenGlyph === 'seen') c.globalAlpha = previousAlpha * SEEN_TURN_ALPHA;
             c.drawImage(
               getCachedSprite(glyph, zoom),
               fx + MONITOR_SCREEN_RECT.x * zoom,
               fy + MONITOR_SCREEN_RECT.y * zoom,
             );
+            c.globalAlpha = previousAlpha;
           }
           if (onScreen) {
             // An active CRT: glow, the occasional dim and scanlines, over the screen pixels only.
@@ -1452,7 +1457,10 @@ function renderSideBubbles(
     const bob = kind === 'ask' ? askBobOffset(nowMs) * zoom : 0;
     const x = Math.round(offsetX + (ch.x + SIDE_BUBBLE_DX) * zoom);
     const y = Math.round(headY + SIDE_BUBBLE_CENTER_DY * zoom - cached.height / 2 - bob);
+    const previousAlpha = ctx.globalAlpha;
+    if (kind === 'seen') ctx.globalAlpha = previousAlpha * SEEN_TURN_ALPHA;
     ctx.drawImage(cached, x, y);
+    ctx.globalAlpha = previousAlpha;
   }
 }
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { UsageLimits } from '../../core/src/messages.js';
 import { AgentStateStore } from '../src/agentStateStore.js';
@@ -103,5 +103,69 @@ describe('UsageLimitsStore', () => {
       ['sevenDay', RESET_7D * 1000],
       ['fiveHour', (RESET_5H + 18_000) * 1000],
     ]);
+  });
+
+  // An account without a 5 h window posts five_hour null on every post. The stored reading must go once no post
+  // has carried it for a while, but only while posts keep arriving, and never because one session lacks the field.
+  describe('a window that stops being carried', () => {
+    const EVERY = 30_000;
+    const MIN = 60_000;
+    const full = { fiveHour: sample(45, RESET_5H), sevenDay: sample(20, RESET_7D) };
+    const without = { fiveHour: null, sevenDay: sample(20, RESET_7D) };
+
+    it('keeps the window while any source still carries it', () => {
+      for (let t = 0; t <= 20 * MIN; t += EVERY) {
+        limits.set(t % (2 * EVERY) === 0 ? full : without, NOW + t);
+        expect(limits.latest().fiveHour).not.toBeNull();
+      }
+    });
+
+    it('drops it at the first post 10 minutes after the last one that carried it', () => {
+      limits.set(full, NOW);
+      let clearedAt: number | null = null;
+      for (let t = EVERY; t <= 11 * MIN; t += EVERY) {
+        const before = broadcasts.length;
+        limits.set(without, NOW + t);
+        if (limits.latest().fiveHour === null && clearedAt === null) {
+          clearedAt = t;
+          expect(broadcasts).toHaveLength(before + 1);
+          // The 7 d reading was accepted by that same post, so it dates the broadcast.
+          expect(limits.latest().receivedAt).toBe(NOW + t);
+        }
+      }
+      expect(clearedAt).toBe(10 * MIN);
+      expect(limits.latest().sevenDay).not.toBeNull();
+    });
+
+    it('drops it even when every post since is an older reading that is not accepted', () => {
+      limits.set(full, NOW);
+      const older = { fiveHour: null, sevenDay: sample(10, RESET_7D) };
+      for (let t = EVERY; t <= 11 * MIN; t += EVERY) limits.set(older, NOW + t);
+      expect(limits.latest().fiveHour).toBeNull();
+      // Only a clear happened since the first post: receivedAt did not move.
+      expect(limits.latest().receivedAt).toBe(NOW);
+    });
+
+    // With every session idle no post arrives, and the webview ages the reading itself.
+    it('keeps the last reading while no post arrives, whatever the clock does', () => {
+      vi.useFakeTimers();
+      try {
+        limits.set(full, NOW);
+        vi.advanceTimersByTime(30 * MIN);
+        expect(limits.latest().fiveHour).not.toBeNull();
+        expect(broadcasts).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('counts an older reading of the window as carried', () => {
+      limits.set(full, NOW);
+      const olderBoth = { fiveHour: sample(30, RESET_5H), sevenDay: sample(20, RESET_7D) };
+      for (let t = EVERY; t <= 20 * MIN; t += EVERY) {
+        limits.set(t % (2 * EVERY) === 0 ? without : olderBoth, NOW + t);
+      }
+      expect(limits.latest().fiveHour).toMatchObject({ usedPercentage: 45 });
+    });
   });
 });

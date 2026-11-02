@@ -55,8 +55,8 @@ function panel(
   );
 }
 
-function pace(limits: UsageLimits | null, installed = true, slim = false): string {
-  return renderToStaticMarkup(createElement(PacePanel, { limits, installed, now: NOW, slim }));
+function pace(limits: UsageLimits | null, installed = true, compact = false): string {
+  return renderToStaticMarkup(createElement(PacePanel, { limits, installed, now: NOW, compact }));
 }
 
 /** Visible text: tags dropped, the entities React escapes decoded. */
@@ -146,7 +146,7 @@ describe('Pace panel (the official limits beside the attention rail)', () => {
     expect(pace(null, true)).toBe('');
   });
 
-  it('shrinks to one figure per window in the slim rail', () => {
+  it('shrinks to one figure per window in the compact panel', () => {
     expect(text(pace(reading(NOW - 5 * M), true, true))).toContain('5h 38%7d 12%');
   });
 });

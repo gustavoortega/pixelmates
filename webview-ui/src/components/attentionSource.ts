@@ -26,6 +26,7 @@ export function attentionOf(
       status: agentStatuses[id],
       awaitingInput: ch?.waitingAwaitingInput === true,
       awaitingReason: os.awaitingReasons.get(id),
+      seen: os.isSeen(id),
       question: os.questions.get(id),
       loopNextAt: os.loops.get(id)?.nextAt,
       currentTool: ch?.currentTool,

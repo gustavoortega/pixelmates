@@ -6,7 +6,8 @@
  *   agent stopped on a question for the user). Stuck: an unacknowledged tripwire, or a health
  *   mark that says the agent spins (stuck, looping, stalled; a dead process is not something to
  *   answer). Your turn: an idle wait (it finished and sits at its prompt), in its own list so a
- *   finished session never crowds out one that is blocked. A loop asleep until a future wake is
+ *   finished session never crowds out one that is blocked; once the user opened that turn it is
+ *   seen and leaves the list until the agent's next turn. A loop asleep until a future wake is
  *   not waiting on you, so it gets no Your turn ticket.
  * - One ticket per agent, in its most urgent kind: permission, then question, then idle, then
  *   stuck; a tripwire outranks a health mark, since it waits on an acknowledgement.
@@ -35,6 +36,8 @@ export interface AttentionAgent {
   awaitingInput?: boolean;
   /** Why it waits, from the server; absent (an older server) reads as a question. */
   awaitingReason?: 'question' | 'idle';
+  /** The user opened this finished turn (an idle wait); the rail drops its Your turn ticket. */
+  seen?: boolean;
   /** What the agent asked, when the server could read it. */
   question?: string;
   /** The loop's next wake, epoch ms; an idle wait before it is the loop sleeping, not a turn. */
@@ -120,14 +123,18 @@ function ticketFor(agent: AttentionAgent, now: number): Ticket | null {
         since: agent.statusSince,
       };
     }
+    // A seen turn returns here, not down to stuck: an alarm on an idle session still shows only
+    // as the Your turn it was before.
     if (!sleeping) {
-      return {
-        id: agent.id,
-        kind: 'idle',
-        glyph: '–',
-        reason: 'Finished',
-        since: agent.statusSince,
-      };
+      return agent.seen
+        ? null
+        : {
+            id: agent.id,
+            kind: 'idle',
+            glyph: '–',
+            reason: 'Finished',
+            since: agent.statusSince,
+          };
     }
   }
   if (agent.tripwire) {
