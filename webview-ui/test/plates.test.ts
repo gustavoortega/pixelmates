@@ -72,6 +72,7 @@ function overlayHtml(
       panRef: { current: { x: 0, y: 0 } },
       onCloseAgent: () => {},
       onAckTripwire: () => {},
+      onOpenInspector: () => {},
     }),
   );
 }
