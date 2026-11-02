@@ -1,5 +1,12 @@
 # Changelog
 
+## pixelmates 1.0.6
+
+- **Seen.** Opening a Your turn session marks that turn seen: it leaves the list and its check dims until the session's next turn. The choice is kept per browser.
+- **Double-click the card.** The agent card over the canvas opens the inspector too, not only the character and the rail ticket.
+- **Compact pace.** When the ticket list runs out of room, the Pace panel shrinks to one row of figures and grows back when there is space again.
+- **An account without a 5 h window.** Its row goes away after 10 minutes of readings without it, instead of lingering until the old reset time.
+
 ## pixelmates 1.0.5
 
 - **A question in prose counts.** When a session ends its turn asking you something in plain text, it goes to Needs you with that question, like a question tool. Needs Claude Code's `last_assistant_message` on Stop (hooks on).
