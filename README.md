@@ -38,7 +38,7 @@ Needs Node.js 22+. Step by step with screenshots: [docs/install.md](docs/install
 
 The rail ranks the sessions that need you: Needs you, then Stuck, then Your turn. A gold `?` beside a character's head means it asked you something; a sage check means it finished. The browser tab counts permission prompts and questions, `(2) pixelmates`, and its icon gets a gold dot.
 
-Arrow keys select. Enter or a double-click on a ticket or a character opens the inspector. Esc or a click on the floor deselects.
+Arrow keys select. Enter or a double-click on a ticket, a character or its card opens the inspector. Opening a Your turn session marks it seen: it leaves the list and its check dims until its next turn. Esc or a click on the floor deselects.
 
 <img src="docs/images/inspector-question.png" alt="Alan selected: the inspector shows his whole question and why it matters, then context, model, branch, session time and cost" width="880">
 

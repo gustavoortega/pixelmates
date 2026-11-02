@@ -34,6 +34,7 @@ import {
   WAITING_BUBBLE_DURATION_SEC,
   WORKFLOW_MAX_VISIBLE_HELPERS,
 } from '../../constants.js';
+import { readSeenTurns, type SeenStorage, writeSeenTurns } from '../../hooks/seenTurns.js';
 import { type FitAgent, LOBBY_ROOM } from '../camera.js';
 import { officeNow } from '../clock.js';
 import {
@@ -195,6 +196,10 @@ export class OfficeState {
    *  privacy mode. Absent when the status carries none. */
   awaitingReasons: Map<number, 'question' | 'idle'> = new Map();
   questions: Map<number, string> = new Map();
+  /** Your turn sessions the user opened: agent id -> the statusSince it saw (null: that turn
+   *  carried none). Not cleared by removeAgent: a hit needs the same id AND the same since. */
+  seenTurns: Map<number, number | null>;
+  private seenStorage: SeenStorage | undefined;
   /** Bumped by every change to the monitor stores above and by every host-message write the
    *  monitor panels also read (title, model, context, session signals, tripwire, health,
    *  roster, team), never by per-frame state; React panels re-render when it moves
@@ -283,7 +288,9 @@ export class OfficeState {
     this.areaUsage = shares;
   }
 
-  constructor(layout?: OfficeLayout) {
+  constructor(layout?: OfficeLayout, seenStorage?: SeenStorage) {
+    this.seenStorage = seenStorage;
+    this.seenTurns = readSeenTurns(seenStorage);
     this.layout = layout || createDefaultLayout();
     this.tileMap = layoutToTileMap(this.layout);
     this.seats = layoutToSeats(this.layout.furniture);
@@ -917,6 +924,33 @@ export class OfficeState {
     }
   }
 
+  /**
+   * Whether the user opened this agent's current finished turn. Callers ask only about an idle
+   * wait. No entry is not seen, including a turn with no `since`: absent is not "seen at nothing".
+   */
+  isSeen(id: number): boolean {
+    return this.seenTurns.has(id) && this.seenTurns.get(id) === (this.statusSince.get(id) ?? null);
+  }
+
+  /** The user opened this agent: its finished turn, if it is waiting on one, counts as seen. */
+  markSeenIfYourTurn(id: number | null): void {
+    if (id === null || this.awaitingReasons.get(id) !== 'idle') return;
+    const since = this.statusSince.get(id) ?? null;
+    if (this.seenTurns.has(id) && this.seenTurns.get(id) === since) return;
+    // Delete first so a re-mark moves to the end: the persisted cap drops the oldest, not this.
+    this.seenTurns.delete(id);
+    this.seenTurns.set(id, since);
+    this.monitorVersion++;
+    writeSeenTurns(this.seenStorage, this.seenTurns);
+  }
+
+  /** The agent is no longer on a finished turn: its next one starts unseen, even with no since. */
+  clearSeen(id: number): void {
+    if (!this.seenTurns.delete(id)) return;
+    this.monitorVersion++;
+    writeSeenTurns(this.seenStorage, this.seenTurns);
+  }
+
   /** Undefined (the clear form) means unknown. */
   setSessionMeta(id: number, view: AgentSessionView | undefined): void {
     this.writeMonitor(this.sessionMeta, id, view);
@@ -1500,7 +1534,12 @@ export class OfficeState {
 
   /** The side bubble beside this head, or null (the rule is sideBubble.ts; the loop is read here). */
   sideBubbleOf(ch: Character): SideBubbleKind | null {
-    return sideBubbleKind(ch, this.awaitingReasons.get(ch.id), this.loopSleeping(ch.id));
+    return sideBubbleKind(
+      ch,
+      this.awaitingReasons.get(ch.id),
+      this.loopSleeping(ch.id),
+      this.isSeen(ch.id),
+    );
   }
 
   /**

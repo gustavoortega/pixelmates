@@ -171,6 +171,17 @@ describe('attentionTickets', () => {
     expect(tickets([{ id: 1, ...idle }]).yours).toHaveLength(1);
   });
 
+  // Opening a finished turn marks it seen. A seen idle wait must not fall through to the stuck
+  // checks below it: an alarm on an idle session showed only as Your turn before, so it stays hidden.
+  it('drops a seen idle wait from Your turn, and does not let it fall through to Stuck', () => {
+    const idle = { status: 'waiting', awaitingInput: true, awaitingReason: 'idle' } as const;
+    expect(tickets([{ id: 1, ...idle, seen: false }]).yours).toHaveLength(1);
+    expect(tickets([{ id: 1, ...idle, seen: true }])).toEqual({ needs: [], stuck: [], yours: [] });
+    expect(
+      tickets([{ id: 1, ...idle, seen: true, tripwire: { ruleName: 'Force push', count: 1 } }]),
+    ).toEqual({ needs: [], stuck: [], yours: [] });
+  });
+
   it('lists the longest wait first, and tickets with no known start after the dated ones', () => {
     const order = attentionTickets(
       [

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { UsageLimits } from '../../../core/src/messages.js';
 import { MONITOR_CLOCK_TICK_MS, MONITOR_RING_HOT_PCT } from '../constants.js';
@@ -15,6 +15,7 @@ import {
 } from './attention.js';
 import { formatDuration } from './limitsPace.js';
 import type { MonitorLayout } from './monitorLayout.js';
+import { nextPaceCompact } from './paceCompact.js';
 import { PacePanel } from './PacePanel.js';
 import { CheckMark, Face, Medal, Ring } from './railArt.js';
 
@@ -29,6 +30,18 @@ export interface MonitorRailProps {
   onSelect: (id: number) => void;
   /** A ticket was double-clicked: select it and open the inspector on it. */
   onOpen: (id: number) => void;
+}
+
+/**
+ * How tall the list's content is. `scrollHeight` is never under `clientHeight`, so it cannot say
+ * how much room is spare; the last child's bottom edge can.
+ */
+function contentHeight(list: HTMLElement): number {
+  const last = list.lastElementChild;
+  if (!last) return Math.ceil(list.scrollHeight);
+  const padBottom = parseFloat(getComputedStyle(list).paddingBottom) || 0;
+  const bottom = last.getBoundingClientRect().bottom - list.getBoundingClientRect().top;
+  return Math.ceil(bottom + list.scrollTop + padBottom);
 }
 
 /** The face tile's inner box, CSS px, per rail mode: the tile minus its two borders. */
@@ -306,6 +319,48 @@ export function MonitorRail({
   const now = officeNow().getTime();
   const [hover, setHover] = useState<{ id: number; rect: DOMRect } | null>(null);
   const slim = layout.rail === 'slim';
+  const railRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // The panel's heights as last rendered full and compact: refs, since they only feed the next
+  // decision. A full height gone stale (the panel gained or lost a row) costs one bounce.
+  const fullH = useRef<number | null>(null);
+  const compactH = useRef(0);
+  const [listOverflows, setListOverflows] = useState(false);
+  const [, setResizeTick] = useState(0);
+  // The list's box moves with the window and with the panel above it: measure again then.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => setResizeTick((n) => n + 1));
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, []);
+  // After every render, deliberately without deps: the decision reads layout, not props. It sets
+  // state only on a change, and a change settles in one more pass (see paceCompact.ts).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (slim) {
+      // The slim rail forces compact; the first rail after it renders full and gets measured.
+      fullH.current = null;
+      if (listOverflows) setListOverflows(false);
+      return;
+    }
+    const list = listRef.current;
+    const rail = railRef.current;
+    if (!list || !rail) return;
+    const panel = rail.querySelector('[data-testid="pace-panel"]');
+    // A panel that rendered nothing is 0 px tall: a measurement, not an unknown.
+    const panelH = panel ? Math.ceil(panel.getBoundingClientRect().height) : 0;
+    if (listOverflows) compactH.current = panelH;
+    else fullH.current = panelH;
+    const next = nextPaceCompact(listOverflows, {
+      scrollH: contentHeight(list),
+      clientH: list.clientHeight,
+      fullH: fullH.current,
+      compactH: compactH.current,
+    });
+    if (next !== listOverflows) setListOverflows(next);
+  });
   const selected = officeState.selectedAgentId;
   const views = (tickets: Ticket[]) =>
     tickets.map((t) => viewOf(officeState, t, now)).filter((v): v is TicketView => v !== null);
@@ -340,13 +395,14 @@ export function MonitorRail({
     : undefined;
   return (
     <aside
+      ref={railRef}
       data-testid="monitor-rail"
       data-rail={layout.rail}
       className="mon-rail"
       style={{ width: layout.railPx }}
       aria-label="Attention"
     >
-      <div className="mon-list pixel-scrollbar">
+      <div ref={listRef} className="mon-list pixel-scrollbar">
         {/* A section with nobody in it is left out: absent, never 0. */}
         {needs.length > 0 && (
           <Section tone="needs" count={needs.length} slim={slim}>
@@ -366,7 +422,12 @@ export function MonitorRail({
           </Section>
         )}
       </div>
-      <PacePanel limits={limits} installed={statuslineInstalled} now={now} slim={slim} />
+      <PacePanel
+        limits={limits}
+        installed={statuslineInstalled}
+        now={now}
+        compact={slim || listOverflows}
+      />
       {slim && popView && hover && (
         <div
           className="tk-pop"

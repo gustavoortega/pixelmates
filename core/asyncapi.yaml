@@ -1842,7 +1842,8 @@ components:
         re-posting an old snapshot never moves it back. Broadcast whenever a post was accepted, and sent on every
         connect by the process that receives the posts, also before anything arrived: then both windows are null and
         `receivedAt` is 0, which tells a client this process is listening. A window is null when no reading for it
-        has been received; 0 is a real value.
+        has been received; 0 is a real value. A window that no post has carried for 10 minutes while posts kept
+        arriving is dropped back to null (an account without that window).
       type: object
       additionalProperties: false
       required: [type, receivedAt, fiveHour, sevenDay]

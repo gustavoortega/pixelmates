@@ -103,7 +103,7 @@ export interface FurnitureInstance {
   /** Render-time horizontal flip flag (for mirrored side variants) */
   mirrored?: boolean;
   /** A PC whose agent asked a question or finished: its screen shows that glyph. */
-  screenGlyph?: 'ask' | 'done';
+  screenGlyph?: 'ask' | 'done' | 'seen';
 }
 
 export interface ToolActivity {

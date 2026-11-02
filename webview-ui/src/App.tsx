@@ -24,6 +24,7 @@ import { VersionIndicator } from './components/VersionIndicator.js';
 import { CLAUDE_HOOKS_PROVIDER_ID, CLAUDE_STATUSLINE_PROVIDER_ID } from './constants.js';
 import { isEditDirty, noteLayoutSent } from './hooks/layoutLoadedGate.js';
 import { usePrivacy } from './hooks/monitorPrivacy.js';
+import { browserStorage } from './hooks/seenTurns.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
@@ -55,7 +56,7 @@ if (isE2E) installTestHooks(officeStateRef);
 
 function getOfficeState(): OfficeState {
   if (!officeStateRef.current) {
-    officeStateRef.current = new OfficeState();
+    officeStateRef.current = new OfficeState(undefined, browserStorage());
   }
   return officeStateRef.current;
 }
@@ -327,7 +328,13 @@ function App() {
   }, []);
 
   // The inspector sheet and the Usage panel share the right edge: opening the sheet closes it.
-  const handleInspectorOpen = useCallback(() => setIsUsageOpen(false), []);
+  // Every way to open the sheet ends here with the agent already selected: that gesture is what
+  // marks a finished turn seen.
+  const handleInspectorOpen = useCallback(() => {
+    setIsUsageOpen(false);
+    const os = getOfficeState();
+    os.markSeenIfYourTurn(os.selectedAgentId);
+  }, []);
   // A double-click: select the agent when the rail names one (the canvas selected it already),
   // then open the sheet the way Enter does.
   const handleOpenInspector = useCallback(
@@ -621,6 +628,7 @@ function App() {
             panRef={editor.panRef}
             onCloseAgent={handleCloseAgent}
             onAckTripwire={handleAckTripwire}
+            onOpenInspector={handleOpenInspector}
             showAreas={showAreas || isEditingAreas}
           />
         </>

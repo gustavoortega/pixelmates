@@ -58,6 +58,14 @@ describe('sideBubbleKind', () => {
   });
 });
 
+describe('sideBubbleKind seen', () => {
+  it('dims only a finished turn: an opened idle wait is seen, a question stays a question', () => {
+    expect(sideBubbleKind(facts(), 'idle', false, true)).toBe('seen');
+    expect(sideBubbleKind(facts(), 'idle', false, false)).toBe('done');
+    expect(sideBubbleKind(facts(), 'question', false, true)).toBe('ask');
+  });
+});
+
 describe('askBobOffset', () => {
   it('alternates 0 and 1 every step', () => {
     expect(askBobOffset(0)).toBe(0);

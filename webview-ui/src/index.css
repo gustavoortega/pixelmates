@@ -978,6 +978,19 @@
 .pace-slim .pc-mini + .pc-mini {
   margin-top: 3px;
 }
+/* Beside a wider rail the compact panel is one row of figures, not a column. */
+.mon-rail:not([data-rail='slim']) .pace.pace-slim {
+  padding: 6px 12px 7px;
+  text-align: left;
+}
+.mon-rail:not([data-rail='slim']) .pace-slim > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+}
+.mon-rail:not([data-rail='slim']) .pace-slim .pc-mini + .pc-mini {
+  margin-top: 0;
+}
 .pace-slim .red {
   color: var(--mon-rust-ink);
 }

@@ -67,6 +67,16 @@ export function MonitorShell({
     setMonitorFullPlates(layout.fullPlates);
     requestRedraw();
   }, [layout.fullPlates]);
+  // Landing on another agent with the sheet open counts as opening it. Status and `since` stay
+  // out of the deps: a turn that ends under an already-open sheet had no gesture.
+  const sheetOpen = officeState.monitorSheetOpen;
+  const selectedAgentId = officeState.selectedAgentId;
+  useEffect(() => {
+    if (!sheetOpen) return;
+    officeState.markSeenIfYourTurn(selectedAgentId);
+    // The mark bumps the version outside a host message; the panels re-render after a drawn frame.
+    requestRedraw();
+  }, [officeState, sheetOpen, selectedAgentId]);
   const attention = attentionOf(officeState, agentTools, agentStatuses);
   useTabBadge(badgeCount(attention));
   return (

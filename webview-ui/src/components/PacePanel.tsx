@@ -6,22 +6,24 @@ const LIMITS_OFF_HINT = 'Turn on "Claude status line" in Settings for the offici
 /**
  * The official limits as the rail's bottom panel: one phrase per live window (`5 h block ·
  * runs out 18:33`, `Week · 66% at reset`), its bar with the even-pace tick, and when it resets.
- * Not installed: `limits off` on the header line, how to turn it on in its tooltip. Installed with nothing live: waiting. A window with no
- * reading has no row: never a 0.
+ * `compact` keeps only the figures (and nothing when they are not installed). Not installed:
+ * `limits off` on the header line, how to turn it on in its tooltip. Installed with nothing live:
+ * waiting. A window with no reading has no row: never a 0.
  */
 export function PacePanel({
   limits,
   installed,
   now,
-  slim,
+  compact,
 }: {
   limits: UsageLimits | null;
   installed: boolean;
   now: number;
-  slim: boolean;
+  /** One row per live window, or nothing: the rail is slim or the ticket list needs the room. */
+  compact: boolean;
 }) {
   if (installed && limits === null) return null;
-  if (slim) {
+  if (compact) {
     const figures = installed ? hudLimits(limits, now) : [];
     if (figures.length === 0) return null;
     return (

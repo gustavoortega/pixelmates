@@ -114,4 +114,28 @@ test.describe('Standalone / double-click opens the inspector', () => {
     await expect(page.getByTestId('inspector-state')).toBeVisible();
     expect(await selectedId(page)).toBe(id);
   });
+
+  test("a double-click on the selected agent's card opens the sheet @area:standalone", async ({
+    page,
+    standalone,
+  }) => {
+    void standalone;
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const id = 9_603;
+    await deliver(page, [
+      { type: 'agentCreated', id, folderName: 'repo' },
+      { type: 'agentStatus', id, status: 'waiting', awaitingInput: true },
+    ]);
+    const head = await settledHead(page, id);
+    await page.mouse.click(head.x + head.w / 2, head.y + head.h / 2);
+    await expect.poll(() => selectedId(page)).toBe(id);
+
+    // The selected card takes pointer events, so the canvas never sees a double-click on it.
+    const card = page.locator(`[data-testid="agent-overlay"][data-agent-id="${id}"]`);
+    await expect(card).toBeVisible();
+    await expect(page.locator(SHEET_OPEN)).toHaveCount(0);
+    await card.dblclick({ position: { x: 6, y: 6 } });
+    await expect(page.locator(SHEET_OPEN)).toBeVisible();
+    expect(await selectedId(page)).toBe(id);
+  });
 });

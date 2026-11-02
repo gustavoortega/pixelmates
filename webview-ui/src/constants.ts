@@ -132,6 +132,8 @@ export const HEALTH_SMOKE_PUFFS = 3;
  *  canvas has no filter. */
 export const DEAD_CHARACTER_FILTER = 'grayscale(1)';
 export const DEAD_CHARACTER_ALPHA = 0.55;
+/** A finished turn the user already opened: its check, dimmed on the head and on the screen. */
+export const SEEN_TURN_ALPHA = 0.45;
 
 // ── Rendering - Overlay Colors (canvas, not CSS) ─────────────
 export const SEAT_OWN_COLOR = 'rgba(0, 127, 212, 0.35)';
@@ -830,6 +832,10 @@ export const MONITOR_SHEET_NARROW_MAX_WIDTH_PX = 1440;
 export const MONITOR_CLOCK_TICK_MS = 30_000;
 /** localStorage key of privacy mode (P), a per-browser preference: '1' on, anything else off. */
 export const MONITOR_PRIVACY_STORAGE_KEY = 'pixelmates.monitor.privacy';
+/** localStorage key of the Your turn sessions the user opened: JSON `[[id, since|null], ...]`. */
+export const MONITOR_SEEN_STORAGE_KEY = 'pixelmates.monitor.seenTurns';
+/** Entries kept in that list, the most recent; an older id can only reappear as unseen. */
+export const SEEN_TURNS_MAX = 200;
 /** Context share (%) at which a medal or context ring turns hot. */
 export const MONITOR_RING_HOT_PCT = 85;
 

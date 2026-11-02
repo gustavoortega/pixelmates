@@ -57,6 +57,8 @@ export function applyMonitorMessage(os: OfficeState, msg: HostMessage): void {
       os.setStatusSince(id, epochMs(msg.since));
       // A wait with no reason is an older server's: a question. Anything else carries none.
       const waiting = msg.status === 'waiting' && msg.awaitingInput === true;
+      // Anything but an idle wait ends the finished turn the user may have opened.
+      if (!(waiting && msg.awaitingReason === 'idle')) os.clearSeen(id);
       os.setAwaiting(
         id,
         waiting ? (msg.awaitingReason === 'idle' ? 'idle' : 'question') : undefined,
