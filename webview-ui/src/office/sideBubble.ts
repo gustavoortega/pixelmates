@@ -4,7 +4,13 @@
  * agent's desk. Pure, so the canvas, the furniture rebuild and the tests share one rule.
  */
 
-import { ASK_BUBBLE_BOB_MS } from '../constants.js';
+import {
+  ASK_BUBBLE_BOB_MS,
+  BUBBLE_VERTICAL_OFFSET_PX,
+  SIDE_BUBBLE_CENTER_DY,
+  SIDE_BUBBLE_DX,
+} from '../constants.js';
+import { seatedBubbleOffsetPx } from './seatDraw.js';
 import { type Character, WorkStatus } from './types.js';
 
 export type SideBubbleKind = 'ask' | 'done' | 'seen';
@@ -38,4 +44,15 @@ export function sideBubbleKind(
 /** World px the question bubble sits above its rest: 0 or 1, flipping every ASK_BUBBLE_BOB_MS. */
 export function askBobOffset(nowMs: number): number {
   return Math.floor(nowMs / ASK_BUBBLE_BOB_MS) % 2;
+}
+
+/** The bubble's box in world px (the ask bob is ignored), for the renderer and the hover hit-test. */
+export function sideBubbleRect(ch: Pick<Character, 'x' | 'y' | 'state' | 'drawSink'>): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  const cy = ch.y + seatedBubbleOffsetPx(ch) - BUBBLE_VERTICAL_OFFSET_PX + SIDE_BUBBLE_CENTER_DY;
+  return { x: ch.x + SIDE_BUBBLE_DX, y: cy - 7, w: 14, h: 14 };
 }

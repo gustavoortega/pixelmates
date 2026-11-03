@@ -1225,3 +1225,47 @@
 .nameplate.nameplate-tag.nameplate-quiet {
   box-shadow: none;
 }
+
+/* Hover speech balloon over a character on the monitor map. It lives outside .mon-rail, so it
+   carries its own sizes. A paper surface: it takes the default --pv-mask. */
+.balloon {
+  --bw: 3px;
+  --sh: 4px;
+  position: absolute;
+  max-width: 280px;
+  padding: 6px 8px;
+  background: var(--mon-paper);
+  color: var(--mon-ink);
+  border: var(--bw) solid var(--mon-ink);
+  box-shadow: 0 var(--sh) 0 var(--mon-ink);
+}
+.balloon-title {
+  font-size: 22px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.balloon-detail {
+  font-size: 20px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+/* The tail points at the character; --tail-dx slides it back when the box was clamped. */
+.balloon::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: calc(50% + var(--tail-dx, 0px));
+  width: 8px;
+  height: 8px;
+  background: var(--mon-paper);
+  border-right: var(--bw) solid var(--mon-ink);
+  border-bottom: var(--bw) solid var(--mon-ink);
+  transform: translateX(-50%) rotate(45deg);
+}
