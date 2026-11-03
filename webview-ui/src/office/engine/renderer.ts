@@ -77,7 +77,6 @@ import {
   SHAFT_EDGE_COLOR,
   shaftCss,
   SIDE_BUBBLE_CENTER_DY,
-  SIDE_BUBBLE_DX,
   TRIPWIRE_BEACON_RADIUS_PX,
   TRIPWIRE_FLASH_PERIOD_MS,
   VOID_TILE_DASH_PATTERN,
@@ -124,7 +123,7 @@ import { mapOffset, worldToDevice } from '../projection.js';
 import { seatedBubbleOffsetPx, seatedDrawOffsetPx } from '../seatDraw.js';
 import { characterLayerZ, shadowSprite } from '../shadow.js';
 import type { Shaft } from '../shafts.js';
-import { askBobOffset, type SideBubbleKind } from '../sideBubble.js';
+import { askBobOffset, type SideBubbleKind, sideBubbleRect } from '../sideBubble.js';
 import {
   getCarpetJunctionSprite,
   getCarpetPaletteKey,
@@ -1455,7 +1454,7 @@ function renderSideBubbles(
       offsetY + (ch.y + seatedBubbleOffsetPx(ch) - BUBBLE_VERTICAL_OFFSET_PX) * zoom,
     );
     const bob = kind === 'ask' ? askBobOffset(nowMs) * zoom : 0;
-    const x = Math.round(offsetX + (ch.x + SIDE_BUBBLE_DX) * zoom);
+    const x = Math.round(offsetX + sideBubbleRect(ch).x * zoom);
     const y = Math.round(headY + SIDE_BUBBLE_CENTER_DY * zoom - cached.height / 2 - bob);
     const previousAlpha = ctx.globalAlpha;
     if (kind === 'seen') ctx.globalAlpha = previousAlpha * SEEN_TURN_ALPHA;

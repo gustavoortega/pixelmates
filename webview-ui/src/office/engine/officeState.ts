@@ -80,7 +80,7 @@ import { darkScreenSprite, monitorLook, monitorTick } from '../monitor.js';
 import { spriteHeadTopY } from '../nameplate.js';
 import { seatedDrawOffsetPx } from '../seatDraw.js';
 import { brightestShaftCell, shaftsAt, shaftsOff } from '../shafts.js';
-import { type SideBubbleKind, sideBubbleKind } from '../sideBubble.js';
+import { type SideBubbleKind, sideBubbleKind, sideBubbleRect } from '../sideBubble.js';
 import { getPetCount, getPetName } from '../sprites/petSpriteData.js';
 import { getLoadedCharacterCount } from '../sprites/spriteData.js';
 import {
@@ -2652,6 +2652,13 @@ export class OfficeState {
       const bottom = anchorY;
       if (worldX >= left && worldX <= right && worldY >= top && worldY <= bottom) {
         return ch.id;
+      }
+      // The side bubble counts as the character, so a balloon can be read by moving onto it.
+      if (this.sideBubbleOf(ch) !== null) {
+        const b = sideBubbleRect(ch);
+        if (worldX >= b.x && worldX <= b.x + b.w && worldY >= b.y && worldY <= b.y + b.h) {
+          return ch.id;
+        }
       }
     }
     return null;

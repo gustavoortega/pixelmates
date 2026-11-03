@@ -65,6 +65,7 @@ function overlayHtml(
       officeState: os,
       agents: [1],
       agentTools: {},
+      agentStatuses: {},
       subagentTools: {},
       subagentCharacters: [],
       containerRef: { current: container },

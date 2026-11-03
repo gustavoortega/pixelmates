@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { ASK_BUBBLE_BOB_MS } from '../src/constants.js';
 import { OfficeState } from '../src/office/engine/officeState.js';
-import { askBobOffset, sideBubbleKind } from '../src/office/sideBubble.js';
+import { askBobOffset, sideBubbleKind, sideBubbleRect } from '../src/office/sideBubble.js';
 import type { Character, OfficeLayout, PlacedFurniture } from '../src/office/types.js';
 import { TileType, WorkStatus } from '../src/office/types.js';
 import { loadRealAssets } from './realAssets.js';
@@ -175,5 +175,21 @@ describe('screen glyphs', () => {
     os.setAwaiting(2, 'question', undefined);
     os.update(0.016);
     expect(drawnGlyphs(os)).toEqual([]);
+  });
+});
+
+describe('hovering the side bubble', () => {
+  // The balloon is read by moving onto the bubble, which sits outside the body's box.
+  it('the bubble of a finished agent selects it; an active agent has no bubble to hit', () => {
+    const os = office();
+    ask(os, 'idle');
+    const ch = os.characters.get(1) as Character;
+    const b = sideBubbleRect(ch);
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    expect(os.getCharacterAt(cx, cy)).toBe(1);
+
+    os.setAgentActive(1, true);
+    expect(os.getCharacterAt(cx, cy)).toBeNull();
   });
 });

@@ -621,6 +621,7 @@ function App() {
             officeState={officeState}
             agents={agents}
             agentTools={agentTools}
+            agentStatuses={agentStatuses}
             subagentTools={subagentTools}
             subagentCharacters={subagentCharacters}
             containerRef={containerRef}
