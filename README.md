@@ -9,7 +9,7 @@ npx @pixelmates/cli
 ```
 
 <p align="center">
-  <img src="docs/images/story.gif" alt="Ada waited 12 minutes on Allow git push. Linus is done, a check beside his head, under Your turn. Alan ends his turn asking Start the week on Monday or Sunday? and a gold question mark appears beside his head. Ada ships a PR, +120, level 13. P masks the text." width="880">
+  <img src="docs/images/story.gif" alt="Ada waited 12 minutes on Allow git push. Linus is done, a check beside his head, under Your turn. Alan ends his turn asking Start the week on Monday or Sunday? and a gold question mark appears beside his head. Each ticket shows its session title under the name. Ada ships a PR, +120, level 13. P masks the text." width="880">
 </p>
 
 Fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) by Pablo De Lucca (MIT). The engine, the hooks and the layout editor are his work; the art is redrawn by code in this fork.
@@ -34,7 +34,7 @@ Needs Node.js 22+. Step by step with screenshots: [docs/install.md](docs/install
 
 ## Who needs you
 
-<img src="docs/images/needs-you.png" alt="Rail: Needs you lists Ada, 12 minutes on Allow git push, and Alan asking whether the new date picker should start the week on Monday or Sunday; Stuck lists Grace, tests failing x4; Your turn lists Linus. In the office Ada's and Alan's desks are lit, Alan has a gold question mark beside his head, Linus a check" width="880">
+<img src="docs/images/needs-you.png" alt="Rail: Needs you lists Ada, 12 minutes on Allow git push, and Alan asking whether the new date picker should start the week on Monday or Sunday; Stuck lists Grace, tests failing x4; Your turn lists Linus. Each ticket shows its session title under the name. In the office a speech balloon over Alan shows his title, Pick a date library, and his question. Ada's and Alan's desks are lit, Linus has a check beside his head" width="880">
 
 The rail ranks the sessions that need you: Needs you, then Stuck, then Your turn. A gold `?` beside a character's head means it asked you something; a sage check means it finished. The browser tab counts permission prompts and questions, `(2) pixelmates`, and its icon gets a gold dot. Each ticket shows the session's title under the name. Hover a character with a ?, a check or a permission prompt to read its title and what it wants in a speech balloon.
 
@@ -50,7 +50,7 @@ Each session is a named character that keeps its level across restarts. XP comes
 
 ## Privacy
 
-<img src="docs/images/privacy.png" alt="Left: rail with text. Right: the same rail after P, text masked" width="880">
+<img src="docs/images/privacy.png" alt="Left: rail with session titles and text. Right: the same rail after P, titles and text masked" width="880">
 
 P masks session text; names, minutes and counters stay. The server binds 127.0.0.1 behind a token and sends nothing off the machine. The plugin's MCP reads transcripts on this machine and redacts secrets; what it returns reaches Claude like any other tool result.
 
