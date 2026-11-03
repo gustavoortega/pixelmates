@@ -382,6 +382,9 @@ function App() {
     const os = getOfficeState();
     os.selectedAgentId = id;
     os.cameraFollowId = id;
+    // Landing on an agent with the sheet open is the gesture that marks its turn seen. Marking here,
+    // not only in MonitorShell's effect, keeps a select-away-and-back inside one frame from being lost.
+    if (os.monitorSheetOpen) os.markSeenIfYourTurn(id);
     requestRedraw();
   }, []);
   const handleRailSelect = useCallback(
