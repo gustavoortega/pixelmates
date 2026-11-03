@@ -1745,7 +1745,7 @@ function createDispatcher(ctx, version) {
 console.log = () => void 0;
 console.info = () => void 0;
 console.debug = () => void 0;
-var VERSION = "1.0.6";
+var VERSION = "1.0.7";
 function log(line) {
   try {
     process.stderr.write(`${LOG_PREFIX} ${line}

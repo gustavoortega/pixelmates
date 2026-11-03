@@ -1,5 +1,10 @@
 # Changelog
 
+## pixelmates 1.0.7
+
+- **Session titles on tickets.** Each ticket in the rail shows the session's title under the name, or its folder when it has none. P masks it.
+- **Speech balloon.** Hover a character with a ?, a check or a permission prompt and a balloon shows its title and its question, the command it wants to run, or how long ago it finished. You can hover the bubble too.
+
 ## pixelmates 1.0.6
 
 - **Seen.** Opening a Your turn session marks that turn seen: it leaves the list and its check dims until the session's next turn. The choice is kept per browser.

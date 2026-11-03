@@ -36,7 +36,7 @@ Needs Node.js 22+. Step by step with screenshots: [docs/install.md](docs/install
 
 <img src="docs/images/needs-you.png" alt="Rail: Needs you lists Ada, 12 minutes on Allow git push, and Alan asking whether the new date picker should start the week on Monday or Sunday; Stuck lists Grace, tests failing x4; Your turn lists Linus. In the office Ada's and Alan's desks are lit, Alan has a gold question mark beside his head, Linus a check" width="880">
 
-The rail ranks the sessions that need you: Needs you, then Stuck, then Your turn. A gold `?` beside a character's head means it asked you something; a sage check means it finished. The browser tab counts permission prompts and questions, `(2) pixelmates`, and its icon gets a gold dot.
+The rail ranks the sessions that need you: Needs you, then Stuck, then Your turn. A gold `?` beside a character's head means it asked you something; a sage check means it finished. The browser tab counts permission prompts and questions, `(2) pixelmates`, and its icon gets a gold dot. Each ticket shows the session's title under the name. Hover a character with a ?, a check or a permission prompt to read its title and what it wants in a speech balloon.
 
 Arrow keys select. Enter or a double-click on a ticket, a character or its card opens the inspector. Opening a Your turn session marks it seen: it leaves the list and its check dims until its next turn. Esc or a click on the floor deselects.
 

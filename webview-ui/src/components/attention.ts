@@ -15,7 +15,8 @@
  *   ones, by id), inside each list.
  * - No session text reaches a reason except the program (and allowlisted subcommand) the server
  *   already put in a Bash status, a tripwire's rule name, and the question the agent asked: the
- *   server redacted and cut it, and the rail's reason line is masked by privacy mode.
+ *   server redacted and cut it, and the rail's reason line is masked by privacy mode. The ticket's
+ *   title row (the session title or folder) is session text too, masked the same way.
  */
 
 import type { HealthState } from '../../../core/src/messages.js';

@@ -624,8 +624,24 @@
   left: -11px;
   bottom: -11px;
 }
-.tk-name {
+.tk-id {
   grid-area: name;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+.tk-sub {
+  min-width: 0;
+  font-size: var(--tk-sub);
+  line-height: 1;
+  color: var(--mon-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tk-name {
   display: flex;
   align-items: center;
   gap: 0.36em;

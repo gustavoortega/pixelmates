@@ -169,7 +169,13 @@ async function colorOf(locator: Locator): Promise<string> {
   return locator.evaluate((el) => getComputedStyle(el).color);
 }
 
+async function backgroundOf(locator: Locator): Promise<string> {
+  return locator.evaluate((el) => getComputedStyle(el).backgroundColor);
+}
+
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+/** What the name plus the title may exceed the face tile by (the mid rail: 44 px over 40). */
+const TITLE_GROWTH_PX = 6;
 
 test.describe('Standalone / monitor attention rail', () => {
   test.beforeEach(async ({ page, standalone }) => {
@@ -266,6 +272,68 @@ test.describe('Standalone / monitor attention rail', () => {
     await expect(ticket(page, b)).toHaveCount(0);
   });
 
+  // A title row makes a ticket a little taller: three titled tickets and the Pace panel must still
+  // fit. The mid rail hides the stub, so a title that only lived there would not show.
+  for (const [width, height] of [
+    [1280, 800],
+    [1920, 800],
+  ] as const) {
+    test(`three titled tickets and the Pace panel fit at ${width}x${height}, each title visible @area:standalone`, async ({
+      page,
+      standalone,
+    }) => {
+      await page.setViewportSize({ width, height });
+      const ids: number[] = [];
+      for (const key of ['a', 'b', 'c']) {
+        ids.push(
+          await startAgent(page, standalone, `rail-title-${key}`, {
+            name: 'Read',
+            input: { file_path: '/tmp/x' },
+          }),
+        );
+        await sendHookEvent(standalone.hookServerConfig, {
+          session_id: `rail-title-${key}`,
+          hook_event_name: 'PreToolUse',
+          tool_name: 'AskUserQuestion',
+          tool_input: { questions: [{ question: 'Ship it?' }] },
+        });
+      }
+      await deliverAll(
+        page,
+        ids.map((id, i) => ({
+          type: 'agentSessionTitle',
+          id,
+          title: ['Retry failed webhooks', 'Pick a date library', 'Fix the flaky cart test'][i],
+        })),
+      );
+
+      const rail = await page.getByTestId('monitor-rail').boundingBox();
+      for (const id of ids) {
+        await expect(ticket(page, id).locator('[data-part="title"]')).toBeVisible();
+        const box = await ticket(page, id).boundingBox();
+        expect(box!.y + box!.height, `ticket ${id} bottom`).toBeLessThanOrEqual(
+          rail!.y + rail!.height + 0.5,
+        );
+        expect(box!.y + box!.height, `ticket ${id} in the window`).toBeLessThanOrEqual(height);
+      }
+      // The list's spare room and the Pace panel's compact row would absorb a looser title row
+      // without a fit failing, so the row is also held near the face tile's height: the first
+      // row of the ticket grows by a few px, not by a line.
+      for (const id of ids) {
+        const [face, text] = await Promise.all([
+          ticket(page, id).locator('.tk-face').boundingBox(),
+          ticket(page, id).locator('.tk-id').boundingBox(),
+        ]);
+        expect(text!.height, `ticket ${id} name and title`).toBeLessThanOrEqual(
+          face!.height + TITLE_GROWTH_PX,
+        );
+      }
+      await expect(page.getByTestId('pace-panel')).toBeVisible();
+      const list = page.locator('.mon-list');
+      expect(await list.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+    });
+  }
+
   // C5.2: the minutes are the server's permissionSince, which the reconnect's resend restates.
   test('after a reconnect the ticket keeps the minutes the server dated its prompt to @area:standalone', async ({
     page,
@@ -327,7 +395,7 @@ test.describe('Standalone / monitor attention rail', () => {
 
   // C5.4: masked = transparent text over a bar; the S1 emitter of the branch is not merged yet,
   // so the branch arrives as the server will send it, through the page's socket.
-  test('P masks the branch and the reason, keeps the name, and stays on after a reload @area:standalone', async ({
+  test('P masks the branch, the title and the reason, keeps the name, and stays on after a reload @area:standalone', async ({
     page,
     standalone,
   }) => {
@@ -348,18 +416,33 @@ test.describe('Standalone / monitor attention rail', () => {
         }),
       id,
     );
+    await page.evaluate(
+      (agentId) =>
+        (window as MonitorWindow).__pixelAgentsDeliver?.({
+          type: 'agentSessionTitle',
+          id: agentId,
+          title: 'Ship the secret launch',
+        }),
+      id,
+    );
     const t = ticket(page, id);
+    const title = t.locator('[data-part="title"]');
     const where = t.locator('[data-part="where"]');
     const reason = t.locator('[data-part="reason"]');
     const name = t.locator('[data-part="name"]');
     await expect(where).toHaveText('feat/secret-launch');
     await expect(where).toBeVisible();
     expect(await colorOf(where)).not.toBe(TRANSPARENT);
+    await expect(title).toHaveText('Ship the secret launch');
+    expect(await colorOf(title)).not.toBe(TRANSPARENT);
 
     await page.keyboard.press('p');
 
     await expect.poll(() => colorOf(where)).toBe(TRANSPARENT);
     expect(await colorOf(reason)).toBe(TRANSPARENT);
+    // The same bar as the reason's, not just invisible text.
+    expect(await colorOf(title)).toBe(TRANSPARENT);
+    expect(await backgroundOf(title)).toBe(await backgroundOf(reason));
     expect(await colorOf(name)).not.toBe(TRANSPARENT);
     await expect(t.locator('.tk-time')).not.toHaveCSS('color', TRANSPARENT);
 
