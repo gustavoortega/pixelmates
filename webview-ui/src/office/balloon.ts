@@ -48,8 +48,13 @@ export function balloonOf(f: BalloonFacts, now: number): Balloon | null {
     return { kind: 'question', title, detail: 'Has a question', detailPv: true };
   }
   if (f.bubble === 'done' || f.bubble === 'seen') {
-    // formatSpan clamps at 0m, so a server clock ahead of ours never reads negative.
-    const detail = f.since === null ? 'Finished' : `Finished ${formatSpan(now - f.since)} ago`;
+    // Under a minute (or a server clock ahead of ours) reads "just now", never "0m ago".
+    const detail =
+      f.since === null
+        ? 'Finished'
+        : now - f.since < 60_000
+          ? 'Finished just now'
+          : `Finished ${formatSpan(now - f.since)} ago`;
     return { kind: 'finished', title, detail, detailPv: false };
   }
   return null;

@@ -74,10 +74,11 @@ describe('balloonOf', () => {
     expect(balloonOf(facts({ bubble: 'done' }), NOW)?.detail).toBe('Finished');
   });
 
-  it('a start ahead of our clock never reads negative', () => {
-    expect(balloonOf(facts({ bubble: 'done', since: NOW + M }), NOW)?.detail).toBe(
-      'Finished 0m ago',
-    );
+  it.each([
+    ['under a minute ago', NOW - 30_000],
+    ['ahead of our clock', NOW + M],
+  ])('a finish %s reads just now, never 0m or negative', (_label, since) => {
+    expect(balloonOf(facts({ bubble: 'done', since }), NOW)?.detail).toBe('Finished just now');
   });
 
   it('a stuck agent keeps its full card', () => {
