@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { spriteWorldHeight, spriteWorldWidth } from '../../../../core/src/assets/artDensity.js';
 import { WORKFLOW_PARENT_TOOL_ID_PREFIX } from '../../../../core/src/constants.js';
+import { attentionOf } from '../../components/attentionSource.js';
 import { Button } from '../../components/ui/Button.js';
 import {
   BUBBLE_VERTICAL_OFFSET_PX,
@@ -58,6 +59,7 @@ import {
 } from '../../constants.js';
 import type { SubagentCharacter } from '../../hooks/subagentMessages.js';
 import { useFrame } from '../../hooks/useFrame.js';
+import { type Balloon, balloonOf } from '../balloon.js';
 import { fitZoomWholeMap } from '../camera.js';
 import { officeNow } from '../clock.js';
 import {
@@ -140,6 +142,7 @@ import {
 } from '../plateState.js';
 import { type OverlayProjection, overlayProjection } from '../projection.js';
 import { seatedBubbleOffsetPx, seatedDrawOffsetPx } from '../seatDraw.js';
+import { sideBubbleRect } from '../sideBubble.js';
 import { BUBBLE_WAITING_SPRITE } from '../sprites/spriteData.js';
 import {
   agentLabel,
@@ -179,6 +182,8 @@ interface ToolOverlayProps {
   officeState: OfficeState;
   agents: number[];
   agentTools: Record<number, ToolActivity[]>;
+  /** The last status per agent: the balloon reads the rail's tickets, which need it. */
+  agentStatuses: Record<number, string>;
   subagentTools: Record<number, Record<string, ToolActivity[]>>;
   subagentCharacters: SubagentCharacter[];
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -233,6 +238,8 @@ function getFuelColor(ratio: number): string {
 
 // Above the compact labels (40) and the character-anchored sub-panels.
 const FULL_BOX_Z_INDEX = 43;
+/** Half the balloon's widest box (CSS max-width 280px): the clamp keeps it inside the map. */
+const BALLOON_HALF_MAX_PX = 140;
 const COMPACT_LABEL_Z_INDEX = 40;
 
 /** The plate: line 1 (alert tab, medal, name, loop glyph, state words) and, on a full plate,
@@ -831,6 +838,7 @@ export function ToolOverlay({
   officeState,
   agents,
   agentTools,
+  agentStatuses,
   subagentTools,
   subagentCharacters,
   containerRef,
@@ -891,6 +899,27 @@ export function ToolOverlay({
   const boxSelectedId = boxFor(selectedId);
   const boxHoveredId = boxFor(hoveredId);
 
+  // The speech balloon of a hovered, non-selected agent that asks something (monitor only). It
+  // replaces that agent's full card; the tag stays so the name is still readable.
+  let hoveredBalloon: { id: number; balloon: Balloon } | null = null;
+  const hoveredCh = boxHoveredId !== null ? officeState.characters.get(boxHoveredId) : undefined;
+  if (monitorFull && hoveredCh && !hoveredCh.isSubagent && boxHoveredId !== selectedId) {
+    const att = attentionOf(officeState, agentTools, agentStatuses);
+    const ticket =
+      [...att.needs, ...att.stuck, ...att.yours].find((t) => t.id === hoveredCh.id) ?? null;
+    const balloon = balloonOf(
+      {
+        monitor: monitorFull,
+        ticket,
+        bubble: officeState.sideBubbleOf(hoveredCh),
+        since: officeState.statusSince.get(hoveredCh.id) ?? null,
+        title: agentLabel(officeState.sessionTitles.get(hoveredCh.id), hoveredCh.folderName),
+      },
+      nowMs,
+    );
+    if (balloon) hoveredBalloon = { id: hoveredCh.id, balloon };
+  }
+
   // All character IDs
   const allIds = [...agents, ...subagentCharacters.map((s) => s.id)];
 
@@ -925,7 +954,7 @@ export function ToolOverlay({
     const ch = officeState.characters.get(id);
     if (!ch) continue;
     const isSelected = boxSelectedId === id;
-    const isHovered = boxHoveredId === id;
+    const isHovered = boxHoveredId === id && hoveredBalloon?.id !== id;
     const parentId = ch.isSubagent ? ch.parentAgentId : null;
     const shown = showOverlay({
       isSub: ch.isSubagent,
@@ -1331,6 +1360,46 @@ export function ToolOverlay({
           data-agent-id={id}
         />
       ))}
+      {hoveredBalloon &&
+        (() => {
+          const ch = officeState.characters.get(hoveredBalloon.id);
+          if (!ch) return null;
+          const { balloon } = hoveredBalloon;
+          const screenX = project.toScreenX(ch.x);
+          // Keep the box inside the map; the tail slides back over the character.
+          const left = Math.min(
+            Math.max(screenX, BALLOON_HALF_MAX_PX + 8),
+            containerRect.width - BALLOON_HALF_MAX_PX - 8,
+          );
+          return (
+            <div
+              data-testid="agent-balloon"
+              data-agent-id={ch.id}
+              data-kind={balloon.kind}
+              className="balloon"
+              style={{
+                left,
+                top: project.toScreenY(sideBubbleRect(ch).y) - 4,
+                transform: 'translate(-50%, -100%)',
+                pointerEvents: 'none',
+                zIndex: FULL_BOX_Z_INDEX,
+                ['--tail-dx' as string]: `${screenX - left}px`,
+              }}
+            >
+              {balloon.title && (
+                <div className="balloon-title pv" data-part="balloon-title">
+                  {balloon.title}
+                </div>
+              )}
+              <div
+                className={balloon.detailPv ? 'balloon-detail pv' : 'balloon-detail'}
+                data-part="balloon-detail"
+              >
+                {balloon.detail}
+              </div>
+            </div>
+          );
+        })()}
       {allIds.map((id) => {
         const ch = officeState.characters.get(id);
         const plan = plans.get(id);

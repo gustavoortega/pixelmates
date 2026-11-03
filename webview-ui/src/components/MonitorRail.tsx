@@ -58,6 +58,8 @@ interface TicketView {
   tier?: number;
   pct?: number;
   model: string | null;
+  /** The session's title, else its folder when the name is not already the folder; masked in privacy mode. */
+  sub?: string;
   /** Branch, else folder; masked in privacy mode. */
   where?: string;
   age?: string;
@@ -69,16 +71,22 @@ function viewOf(os: OfficeState, ticket: Ticket, now: number): TicketView | null
   const member = os.rosters.get(ticket.id)?.name || ch.agentName;
   const model = os.models.get(ticket.id);
   const meta = os.sessionMeta.get(ticket.id);
+  const nameIsFolder = !member && !!ch.folderName;
+  const sub =
+    os.sessionTitles.get(ticket.id) || (nameIsFolder ? undefined : ch.folderName) || undefined;
+  const where = meta?.branch || ch.folderName || undefined;
   return {
     ticket,
     name: member || ch.folderName || `Agent ${ticket.id}`,
-    nameIsFolder: !member && !!ch.folderName,
+    nameIsFolder,
+    sub,
     palette: ch.palette,
     hueShift: ch.hueShift,
     tier: model?.tier,
     pct: contextPercent(ch.contextTokens, ch.maxContextTokens),
     model: modelLabel(model?.model, model?.tier),
-    where: meta?.branch || ch.folderName || undefined,
+    // The stub repeats nothing the title row already says.
+    where: where === sub ? undefined : where,
     age: meta?.startedAt === undefined ? undefined : formatDuration(now - meta.startedAt),
   };
 }
@@ -189,10 +197,17 @@ function FullTicket({
       data-selected={selected}
     >
       <FaceTile view={view} box={box} medalScale={medalScale} />
-      <div className="tk-name">
-        <span className={view.nameIsFolder ? 'pv' : undefined} data-part="name">
-          {view.name}
-        </span>
+      <div className="tk-id">
+        <div className="tk-name">
+          <span className={view.nameIsFolder ? 'pv' : undefined} data-part="name">
+            {view.name}
+          </span>
+        </div>
+        {view.sub && (
+          <div className="tk-sub pv" data-part="title">
+            {view.sub}
+          </div>
+        )}
       </div>
       <div className="tk-why pv" data-part="reason">
         <Reason ticket={ticket} />

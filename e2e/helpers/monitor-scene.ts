@@ -9,6 +9,17 @@
 const MIN = 60_000;
 const WF_PREFIX = 'wf:';
 
+/** Made-up session titles, one per agent. */
+const TITLES: Record<string, string> = {
+  Ada: 'Retry failed webhooks',
+  Alan: 'Pick a date library',
+  Grace: 'Fix the flaky cart test',
+  Linus: 'Review the payments PR',
+  Barbara: 'Split the VPN tunnel',
+  Dennis: 'Bump the Node version',
+  Hedy: 'Write the release notes',
+};
+
 const AGENTS = [
   { id: 1, name: 'Ada', folder: 'billing-api', branch: 'fix/retry-backoff', tier: 4, ctx: 620 },
   { id: 2, name: 'Alan', folder: 'web-app', branch: 'feat/date-picker', tier: 2, ctx: 68 },
@@ -96,6 +107,7 @@ export function monitorSceneMessages(baseMs: number): Array<Record<string, unkno
       mood: 'neutral',
     });
     out.push({ type: 'agentSession', id: a.id, startedAt: ago(40 + a.id), branch: a.branch });
+    out.push({ type: 'agentSessionTitle', id: a.id, title: TITLES[a.name] });
   }
   // Ada: a permission prompt for `git push`.
   out.push({
